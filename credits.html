@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crédits · Ma Maison en Jeu</title>
+<link rel="stylesheet" href="style.css">
+<style>
+html, body { overflow: auto; height: auto; }
+main { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 26px; }
+h2 { font-family: "Righteous", sans-serif; font-weight: 400; text-transform: uppercase; letter-spacing: 0.04em; font-size: 18px; margin: 28px 0 8px; }
+li { margin: 6px 0; line-height: 1.4; }
+a { color: var(--texte); }
+</style>
+</head>
+<body>
+<main>
+  <p><a href="index.html">← Retour au jeu</a></p>
+  <h1>Crédits</h1>
+  <p>Ma Maison en Jeu est une création Pomelo, en collaboration avec Maisons Clever'hom. Les modèles 3D suivants sont utilisés sous licence libre.</p>
+  <h2>Modèles Sketchfab (licence CC BY 4.0)</h2>
+  <ul id="sketchfab"><li>Chargement…</li></ul>
+  <h2>Poly Haven (CC0)</h2>
+  <ul id="polyhaven"></ul>
+  <h2>Personnages</h2>
+  <ul><li>Microsoft Rocketbox Avatar Library (licence MIT)</li></ul>
+  <p>Licence CC BY 4.0 : <a href="https://creativecommons.org/licenses/by/4.0/deed.fr">creativecommons.org/licenses/by/4.0</a>. Certains modèles ont été simplifiés ou recolorés pour le jeu.</p>
+</main>
+<script type="module">
+const c = await (await fetch('assets/credits.json')).json();
+const li = (html) => { const e = document.createElement('li'); e.innerHTML = html; return e; };
+const esc = (s) => String(s).replace(/[&<>"]/g, (x) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[x]));
+const sf = document.getElementById('sketchfab'); sf.textContent = '';
+for (const m of c.sketchfab) sf.append(li(`« <a href="${esc(m.lien)}">${esc(m.nom)}</a> », par ${esc(m.auteur)}`));
+const ph = document.getElementById('polyhaven');
+for (const n of c.polyhaven) ph.append(li(esc(n.replace(/_/g, ' ')) + ', polyhaven.com'));
+</script>
+</body>
+</html>

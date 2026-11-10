@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ma Maison en Jeu</title>
+<meta name="description" content="Prolongez votre visite Clever'hom avec Pomelo : votre future maison, en 3D, sur votre téléphone.">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="scene" aria-label="La maison Clever'hom en 3D. Faites glisser pour la faire tourner."></canvas>
+
+<header class="haut">
+  <div class="logos"><img src="assets/img/pomelo-web.png" alt="Pomelo"><span aria-hidden="true">×</span><img src="assets/img/cleverhom-web.png" alt="Maisons Clever'hom"></div>
+  <h1>Prolongez votre visite Clever'hom <span class="surligne">avec Pomelo</span></h1>
+  <p class="baseline"><span class="point" aria-hidden="true"></span>Le Bonheur, ici et maintenant !</p>
+</header>
+
+<div class="astuce" id="astuce">Faites glisser pour tourner autour de la maison</div>
+
+<section class="carte">
+  <div class="ligne">
+    <div><p class="etiquette">Clever'parc de Wittelsheim</p><p class="nom">La Clever'hom</p></div>
+    <button class="vue" id="vue" type="button" disabled>Ouvrir la maison</button>
+  </div>
+  <a class="jouer" href="#" id="jouer">Jouer</a>
+  <p class="mentions">Visuels et aménagements non contractuels · <a href="credits.html">Crédits</a></p>
+</section>
+
+<div class="chargement" id="chargement" role="status" aria-live="polite">
+  <div class="barre"><div id="barre"></div></div>
+  <p id="texte">Chargement de votre maison…</p>
+</div>
+
+<pre class="mesures" id="mesures" hidden></pre>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

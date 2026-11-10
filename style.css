@@ -1,0 +1,42 @@
+@font-face { font-family: "Righteous"; src: url(assets/fonts/righteous.woff2) format("woff2"); font-display: swap; }
+@font-face { font-family: "Glacial Indifference"; src: url(assets/fonts/glacial-indifference-400.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Glacial Indifference"; src: url(assets/fonts/glacial-indifference-700.woff2) format("woff2"); font-weight: 700; font-display: swap; }
+
+:root { --fond: #fdece3; --texte: #1f1d1c; --corail: #f68f7c; --rose: #ee3f81; --sauge: #7bae8a; --sauge-fonce: #4e7a5c; --gris: #4a433e; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--fond); color: var(--texte); font-family: "Glacial Indifference", system-ui, sans-serif; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+.haut { position: fixed; left: 0; right: 0; top: 0; padding: max(16px, env(safe-area-inset-top)) 20px 40px; pointer-events: none;
+  background: linear-gradient(180deg, var(--fond) 0%, var(--fond) 70%, rgba(253, 236, 227, 0) 100%); }
+.logos { display: flex; align-items: center; gap: 10px; }
+.logos img { height: 28px; width: auto; }
+.logos img + span + img { height: 36px; }
+.logos span { color: #6b625c; }
+h1 { margin: 12px 0 8px; font-family: "Righteous", sans-serif; font-weight: 400; font-size: clamp(22px, 7vw, 30px); line-height: 1.08; text-transform: uppercase; letter-spacing: 0.04em; max-width: 360px; }
+.surligne { background: linear-gradient(180deg, transparent 58%, var(--rose) 58%); }
+.baseline { margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.point { width: 10px; height: 10px; border-radius: 5px; background: var(--rose); }
+
+.astuce { position: fixed; left: 50%; bottom: 196px; transform: translateX(-50%); background: rgba(31, 29, 28, 0.78); color: #fff; font-size: 13px; font-weight: 700;
+  padding: 8px 14px; border-radius: 999px; white-space: nowrap; transition: opacity 0.6s; pointer-events: none; }
+.astuce.cache { opacity: 0; }
+
+.carte { position: fixed; left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); max-width: 420px; margin: 0 auto; background: #fff; border-radius: 24px;
+  padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(31, 29, 28, 0.14); }
+.ligne { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.etiquette { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--sauge-fonce); }
+.nom { margin: 2px 0 0; font-weight: 700; font-size: 21px; }
+.vue { flex-shrink: 0; min-height: 44px; border: 1.5px solid var(--texte); background: #fff; color: var(--texte); border-radius: 999px; padding: 0 14px; font: 700 14px "Glacial Indifference", sans-serif; cursor: pointer; }
+.vue:disabled { opacity: 0.45; cursor: default; }
+.jouer { display: block; text-align: center; text-decoration: none; background: var(--corail); color: var(--texte); font-family: "Righteous", sans-serif; font-size: 22px; padding: 14px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; }
+.mentions { margin: 0; text-align: center; font-size: 11px; color: var(--gris); }
+.mentions a { color: var(--gris); }
+
+.chargement { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: var(--fond); transition: opacity 0.5s; }
+.chargement.fini { opacity: 0; pointer-events: none; }
+.barre { width: 220px; height: 8px; border-radius: 4px; background: #f3d9d0; overflow: hidden; }
+.barre div { height: 100%; width: 0; background: var(--corail); transition: width 0.2s; }
+.chargement p { margin: 0; font-weight: 700; }
+
+.mesures { position: fixed; left: 8px; top: 50%; margin: 0; padding: 8px 10px; background: rgba(255, 255, 255, 0.92); border-radius: 10px; font: 11px/1.4 ui-monospace, monospace; color: #1f1d1c; }
