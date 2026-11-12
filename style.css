@@ -115,3 +115,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .habitudes { border-top: 1px solid #f3e7df; padding-top: 8px; }
 .habitudes summary { cursor: pointer; font-weight: 700; font-size: 15px; padding: 6px 0; }
 .habitudes .grille { margin-top: 8px; }
+.puce-membre { display: inline-flex; align-items: center; border-radius: 999px; }
+.puce-membre .puce { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; padding-right: 9px; }
+.corbeille { min-height: 36px; width: 36px; display: flex; align-items: center; justify-content: center; border: 1.5px solid #e8ddd5; border-left: none; border-radius: 0 999px 999px 0; background: #fff; color: #d9302c; cursor: pointer; padding: 0; }
+.puce-membre .puce[aria-pressed="true"] + .corbeille { border-color: var(--texte); background: var(--texte); color: #ff7a73; }

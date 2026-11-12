@@ -186,6 +186,10 @@ const libelle = (liste, id) => (liste.find((x) => x[0] === id) || [, '—'])[1];
 
 // ---------- écrans ----------
 const esc = (s) => String(s).replace(/[&<>"]/g, (x) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[x]));
+const CORBEILLE = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
+const puceHtml = (p) => p.suppr
+  ? `<span class="puce-membre"><button type="button" class="puce" data-id="${p.id}" aria-pressed="${p.on}">${esc(p.l)}</button><button type="button" class="corbeille" data-suppr="${p.id}" aria-label="Retirer ${esc(p.l)} de la famille">${CORBEILLE}</button></span>`
+  : `<button type="button" class="puce" data-id="${p.id}" aria-pressed="${p.on}">${esc(p.l)}</button>`;
 const choix = (id, titre, sous, on, classe = '') => `<button type="button" class="choix ${classe}" data-id="${id}" aria-pressed="${!!on}"><b>${esc(titre)}</b>${sous ? `<span>${esc(sous)}</span>` : ''}</button>`;
 
 const ORDRE = ['accueil', 'arbre', 'famille', 'salon', 'etage', 'aventures', 'fiche'];
@@ -204,7 +208,7 @@ const ECRANS = {
   famille: {
     vue: 'exterieur', plan: 'famille', etape: 'Étape 2 sur 4 · Votre famille',
     intitule: () => `Votre ${ARBRES.find((x) => x.id === etat.arbre)?.nom.toLowerCase() || 'arbre'} est planté. Qui vit dans la maison ?`,
-    puces: () => etat.membres.map((m) => ({ id: m.id, l: m.prenom || (m.type === 'animal' ? nomAnimal[m.avatar] : 'Sans prénom'), on: etat.membre === m.id }))
+    puces: () => etat.membres.map((m) => ({ id: m.id, l: m.prenom || (m.type === 'animal' ? nomAnimal[m.avatar] : 'Sans prénom'), on: etat.membre === m.id, suppr: etat.membres.length > 1 }))
       .concat(etat.membres.length < MAX_MEMBRES ? [{ id: 'ajouter', l: '+ Ajouter', on: false }] : []),
     puce: (id) => {
       if (id !== 'ajouter') { etat.membre = id; return; }
@@ -221,7 +225,7 @@ const ECRANS = {
             ? `<button type="button" class="choix animal" data-avatar="${x}" aria-pressed="${m.avatar === x}"><b>${nomAnimal[x]}</b></button>`
             : `<button type="button" class="portrait" data-avatar="${x}" aria-pressed="${m.avatar === x}" aria-label="Personnage ${x}"><img src="assets/avatars/${x}.webp" alt="" width="64" height="64" loading="lazy"></button>`).join('')}</div>`
         + (animal ? '' : `<details class="habitudes" ${etat.habitudesOuvert ? 'open' : ''}><summary>Ses habitudes à la maison${m.habitudes.length ? ' · ' + m.habitudes.length : ''}</summary><div class="grille">${HABITUDES.map(([id, l, sous]) => choix(id, l, sous, m.habitudes.includes(id))).join('')}</div></details>`)
-        + (etat.membres.length > 1 ? `<button type="button" class="retirer" data-action="retirer">Retirer ${esc(m.prenom || 'ce membre')} de la famille</button>` : '');
+;
     },
     clic: (id, el) => {
       const m = membreActif();
@@ -285,21 +289,24 @@ function dessiner() {
   $('etape').textContent = e.etape;
   $('pastille').hidden = !e.pastille; $('pastille').textContent = e.pastille || '';
   $('intitule').textContent = typeof e.intitule === 'function' ? e.intitule() : e.intitule;
-  $('puces').innerHTML = e.puces ? e.puces().map((p) => `<button type="button" class="puce" data-id="${p.id}" aria-pressed="${p.on}">${esc(p.l)}</button>`).join('') : '';
+  $('puces').innerHTML = e.puces ? e.puces().map(puceHtml).join('') : '';
   $('contenu').innerHTML = e.contenu();
   $('suite').textContent = e.suite(); $('suite').disabled = !e.pret();
 }
 async function choisirArbre(id) { etat.arbre = id; dessiner(); await planter(id); }
 
-$('puces').addEventListener('click', (ev) => { const b = ev.target.closest('.puce'); if (!b) return; ECRANS[ecran].puce(b.dataset.id); dessiner(); });
+$('puces').addEventListener('click', (ev) => {
+  const x = ev.target.closest('[data-suppr]');
+  if (x) { const id = x.dataset.suppr; etat.membres = etat.membres.filter((m) => m.id !== id); if (etat.membre === id) etat.membre = etat.membres[0].id; synchroniserFamille(); dessiner(); return; }
+  const b = ev.target.closest('.puce'); if (!b) return; ECRANS[ecran].puce(b.dataset.id); dessiner(); });
 $('contenu').addEventListener('click', (ev) => { const b = ev.target.closest('[data-id],[data-type],[data-avatar],[data-action]'); if (!b || !ECRANS[ecran].clic) return; ECRANS[ecran].clic(b.dataset.id, b); dessiner(); });
 $('contenu').addEventListener('input', (ev) => {
   if (ev.target.id === 'prenom') etat.prenom = ev.target.value;
   if (ev.target.id === 'contact') etat.contact = ev.target.value;
   if (ev.target.id === 'accord') etat.accord = ev.target.checked;
   if (ev.target.id === 'prenom-m' || ev.target.id === 'age-m') { const m = membreActif(); if (ev.target.id === 'prenom-m') m.prenom = ev.target.value.trim() ? ev.target.value : ''; else m.age = ev.target.value;
-    const e = ECRANS[ecran]; $('puces').innerHTML = e.puces().map((p) => `<button type="button" class="puce" data-id="${p.id}" aria-pressed="${p.on}">${esc(p.l)}</button>`).join('');
-    const r = $('contenu').querySelector('.retirer'); if (r) r.textContent = `Retirer ${m.prenom || 'ce membre'} de la famille`; }
+    const e = ECRANS[ecran]; $('puces').innerHTML = e.puces().map(puceHtml).join('');
+ }
   $('suite').disabled = !ECRANS[ecran].pret();
 });
 $('contenu').addEventListener('toggle', (ev) => { if (ev.target.matches('details.habitudes')) etat.habitudesOuvert = ev.target.open; }, true);
