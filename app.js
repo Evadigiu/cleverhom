@@ -148,10 +148,20 @@ function montrer(nom, fam = true) {
 // terre au pied de l'arbre, visible seulement une fois l'arbre planté
 const terre = new THREE.Mesh(new THREE.CircleGeometry(0.75, 40), new THREE.MeshStandardMaterial({ color: '#6b4b33', roughness: 1 }));
 terre.rotation.x = -Math.PI / 2; terre.position.set(-5.6, -0.295, 0.9); terre.receiveShadow = true; terre.visible = false; scene.add(terre);
+// recentre un arbre pour que son tronc (le bas du modèle) tombe au milieu de la terre
+function centrerTronc(racine) {
+  racine.updateMatrixWorld(true);
+  let ymin = Infinity; const v = new THREE.Vector3(); const pts = [];
+  racine.traverse((m) => { if (!m.isMesh) return; const pos = m.geometry.attributes.position; const pas = Math.max(1, Math.floor(pos.count / 4000));
+    for (let i = 0; i < pos.count; i += pas) { v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld); pts.push(v.x, v.y, v.z); if (v.y < ymin) ymin = v.y; } });
+  let sx = 0, sz = 0, n = 0;
+  for (let i = 0; i < pts.length; i += 3) if (pts[i + 1] < ymin + 0.35) { sx += pts[i]; sz += pts[i + 2]; n++; }
+  if (n) { racine.position.x += terre.position.x - sx / n; racine.position.z += terre.position.z - sz / n; }
+}
 async function planter(id) {
   terre.visible = !!id;
   if (!id) { for (const a of Object.values(arbres)) if (a.scene) a.scene.visible = false; return; }
-  if (!arbres[id]) arbres[id] = charger('arbres/' + id).then((g) => { scene.add(g.scene); arbres[id] = g; return g; });
+  if (!arbres[id]) arbres[id] = charger('arbres/' + id).then((g) => { centrerTronc(g.scene); scene.add(g.scene); arbres[id] = g; return g; });
   const g = await arbres[id];
   for (const [k, a] of Object.entries(arbres)) if (a.scene) a.scene.visible = k === id && etat.arbre === id;
 }
@@ -343,7 +353,7 @@ async function demarrer() {
   decor.interieur = inte.scene; decor.etage = etage.scene; coques.coupe = coupe.scene; coques.etage = et.scene;
   scene.add(inte.scene, etage.scene, coupe.scene, et.scene);
   montrer(vue, ECRANS[ecran]?.famille !== false);
-  planter(null); arbres.pommier = charger('arbres/pommier').then((g) => { g.scene.visible = etat.arbre === 'pommier'; scene.add(g.scene); arbres.pommier = g; return g; });
+  planter(null); arbres.pommier = charger('arbres/pommier').then((g) => { centrerTronc(g.scene); g.scene.visible = etat.arbre === 'pommier'; scene.add(g.scene); arbres.pommier = g; return g; });
   mesures.complet = (performance.now() - DEBUT) / 1000; mesures.tout = total;
 }
 
