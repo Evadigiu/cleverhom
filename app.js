@@ -196,10 +196,10 @@ let numero = 0; const membre = (prenom, age, type, avatar) => ({ id: 'm' + (++nu
 const etat = { valeur: null, arbre: null, membres: [membre('Léa', 36, 'adulte', 'f07'), membre('Thomas', 38, 'adulte', 'm04'), membre('Lou', 8, 'enfant', 'garcon1'), membre('Biscotte', '', 'animal', 'chien')], membre: 'm1', salon: [], piece: null, chambres: 3, aventure: null, prenom: '', contact: '', accord: false, envoye: false };
 
 const ARBRES = [
-  { id: 'pommier', nom: 'Pommier', le: 'le pommier', couleur: '#d6382f', titre: "Le pommier · l'abondance", texte: "Ce que l'on cultive et que l'on transmet. L'arbre des vergers alsaciens." },
-  { id: 'cerisier', nom: 'Cerisier', le: 'le cerisier', couleur: '#f4b6c8', titre: 'Le cerisier · les moments heureux', texte: "Le renouveau, une floraison qu'on attend chaque printemps." },
-  { id: 'lilas', nom: 'Lilas', le: 'le lilas', couleur: '#b48ad6', titre: 'Le lilas · la tendresse', texte: "L'amitié et l'accueil. Un arbuste qui parfume le jardin en mai." },
-  { id: 'noisetier', nom: 'Noisetier', le: 'le noisetier', couleur: '#a8743f', titre: 'Le noisetier · la sagesse', texte: "La patience et l'ancrage. Un arbuste généreux, des noisettes à l'automne." },
+  { id: 'pommier', nom: 'Pommier', le: 'le pommier', couleur: '#d6382f', titre: 'Le pommier · ce qui se transmet', texte: "Planté par vous, cueilli par vos enfants, puis par les leurs. L'arbre des vergers alsaciens." },
+  { id: 'cerisier', nom: 'Cerisier', le: 'le cerisier', couleur: '#f4b6c8', titre: 'Le cerisier · les moments heureux', texte: "Quand il fleurit, toute la famille sort au jardin. Le rendez-vous de chaque printemps." },
+  { id: 'lilas', nom: 'Lilas', le: 'le lilas', couleur: '#b48ad6', titre: "Le lilas · l'accueil", texte: "En mai, son parfum accueille vos invités dès le portail. Et il y a toujours un bouquet à offrir." },
+  { id: 'noisetier', nom: 'Noisetier', le: 'le noisetier', couleur: '#a8743f', titre: 'Le noisetier · le calme', texte: "Un coin d'ombre où l'on vient souffler. À l'automne, les noisettes se ramassent sans se presser." },
 ];
 // chaque valeur oriente vers un arbre ; la petite phrase dit ce qu'elle veut dire, concrètement, dans une maison
 const VALEURS = [
