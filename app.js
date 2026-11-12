@@ -232,15 +232,35 @@ const NOEL = [
   { f: 'village', long: 0.55, p: [[-1.35, 0.9, 1.55, 0.5]] },                                  // village de Noël sur la table de la terrasse
   { f: 'boule_deco', haut: 0.55, p: [[-6.3, -0.32, 2.6, 0], [-6.9, -0.32, 3.3, 1], [-3.5, -0.32, 0.4, 2]] },
   { f: 'sucres', haut: 0.6, p: [[-3.1, -0.32, 0.9, 0], [-3.1, -0.32, 2.1, 0], [-3.1, -0.32, 6.6, 0], [-3.1, -0.32, -0.3, 0]] },
+  { f: 'bonhomme1', haut: 1.3, p: [[-7.0, -0.32, 3.7, -2.76], [-3.7, -0.32, 6.4, -2.4]] },        // bonshommes de neige (LeionaChung, bojackart)
+  { f: 'bonhomme2', haut: 1.0, p: [[-8.3, -0.32, 2.2, -1.19], [-2.9, -0.32, -1.6, -1.6]] },
   { f: 'guirlande', long: 0.9, p: [-9.3, -8.3, -7.3, -6.3, -5.3, -4.3].map((x) => [x, 1.15, 5.8, Math.PI / 2]), brille: true },
 ];
 const noel = { groupe: null, charge: null, boule: null, fait: false, dedans: false, pops: [] };
 // dehors : façade et jardin ; dedans : vue en coupe du rez-de-chaussée (les décos de façade, hors de la coupe, sont alors cachées)
 function vueNoel(dedans) { noel.dedans = dedans; montrer(dedans ? 'coupe' : 'exterieur', true); viser(dedans ? 'noelMaison' : 'noelDehors');
   if (noel.groupe) for (const p of noel.groupe.children) if (p.userData.facade) p.visible = !dedans; }
+// flocon rond et flou, dessiné une fois
+function texFlocon() { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.4, 'rgba(255,255,255,0.8)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); }
+// neige au sol : un voile blanc irrégulier posé sur la pelouse (la terrasse, plus haute, reste en bois)
+function texSol() { const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 900; i++) { x.fillStyle = `rgba(${200 + Math.random() * 30},${215 + Math.random() * 25},${235 + Math.random() * 20},${Math.random() * 0.35})`; const r = 2 + Math.random() * 10; x.beginPath(); x.arc(Math.random() * 256, Math.random() * 256, r, 0, 7); x.fill(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 6); t.colorSpace = THREE.SRGBColorSpace; return t; }
+const FLOCONS = 3200, ZONE = { x0: -16, x1: 10, y0: -0.3, y1: 9, z0: -7, z1: 11 };
+function creerNeige() {
+  const sol = new THREE.Mesh(new THREE.PlaneGeometry(ZONE.x1 - ZONE.x0, ZONE.z1 - ZONE.z0), new THREE.MeshStandardMaterial({ map: texSol(), roughness: 0.95, transparent: true, opacity: 0.88, depthWrite: false }));
+  sol.rotation.x = -Math.PI / 2; sol.position.set((ZONE.x0 + ZONE.x1) / 2, -0.305, (ZONE.z0 + ZONE.z1) / 2); sol.receiveShadow = true; sol.renderOrder = 1;
+  const pos = new Float32Array(FLOCONS * 3), vit = new Float32Array(FLOCONS);
+  for (let i = 0; i < FLOCONS; i++) { pos[i * 3] = ZONE.x0 + Math.random() * (ZONE.x1 - ZONE.x0); pos[i * 3 + 1] = ZONE.y0 + Math.random() * (ZONE.y1 - ZONE.y0); pos[i * 3 + 2] = ZONE.z0 + Math.random() * (ZONE.z1 - ZONE.z0); vit[i] = 0.5 + Math.random() * 0.7; }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const flocons = new THREE.Points(geo, new THREE.PointsMaterial({ map: texFlocon(), size: 0.16, transparent: true, depthWrite: false, opacity: 0.95 }));
+  flocons.userData.vit = vit; flocons.frustumCulled = false; noel.flocons = flocons; noel.sol = sol;
+  noel.groupe.add(sol, flocons);
+}
 function chargerNoel() {
   if (noel.charge) return noel.charge;
-  noel.groupe = new THREE.Group(); noel.groupe.visible = false; scene.add(noel.groupe);
+  noel.groupe = new THREE.Group(); noel.groupe.visible = false; scene.add(noel.groupe); creerNeige();
   noel.charge = Promise.all(NOEL.map(async (d) => { const g = await charger('noel/' + d.f);
     for (const [x, y, z, r] of d.p) { const o = g.scene.clone(true); const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
       o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
@@ -266,11 +286,15 @@ async function ouvrirBoule() {
   if (noel.boule) noel.boule.visible = false;
   dessiner(); await chargerNoel();
   noelActif = true; noel.dedans = false; appliquerStyle(styleActif); montrer('exterieur', true); viser('noelDehors');
-  noel.groupe.visible = true; noel.pops = noel.groupe.children.map((p, i) => ({ p, t: -i * 0.07 })); for (const p of noel.groupe.children) p.scale.setScalar(0.001);
+  noel.groupe.visible = true; const objets = noel.groupe.children.filter((p) => p !== noel.sol && p !== noel.flocons);
+  noel.pops = objets.map((p, i) => ({ p, t: -i * 0.07 })); for (const p of objets) p.scale.setScalar(0.001);
   dessiner();
 }
 function avancerNoel(dt) {
   if (noel.boule && noel.boule.visible) { noel.boule.rotation.y += dt * 0.8; noel.boule.position.y = -0.32 + 0.06 + Math.sin(performance.now() / 400) * 0.05; }
+  if (noel.flocons && noel.groupe.visible) { const a = noel.flocons.geometry.attributes.position, v = noel.flocons.userData.vit, t = performance.now() / 1000;
+    for (let i = 0; i < FLOCONS; i++) { let y = a.array[i * 3 + 1] - v[i] * dt; a.array[i * 3] += Math.sin(t + i) * 0.15 * dt; if (y < ZONE.y0) y = ZONE.y1; a.array[i * 3 + 1] = y; }
+    a.needsUpdate = true; }
   if (!noel.pops.length) return;
   for (const q of noel.pops) { q.t += dt; const k = Math.min(1, Math.max(0, q.t / 0.5)); const e = k < 1 ? 1 - Math.pow(1 - k, 3) * Math.cos(k * 6) : 1; q.p.scale.setScalar(Math.max(0.001, e)); }
   noel.pops = noel.pops.filter((q) => q.t < 0.5);
