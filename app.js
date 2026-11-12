@@ -148,6 +148,7 @@ const DECO = {
     cacher: (m) => /^Sink_Main/.test(m.name) || (/^Object_[2-6]$/.test(m.name) && centreDe(m).x > 4.5 && centreDe(m).z > 4.4 && centreDe(m).y < 2.5),
     poser: [
       { f: 'douche', long: 1.0, x: 5.6, y: 0.0, z: 5.2, r: 0, verre: /^Cube\.?00[1-4]/ },                     // douche vitrée (Shower, Ali_Army107), ouverture côté pièce
+      { f: 'tapis_sdb', long: 0.75, x: 6.55, y: 0.04, z: 5.05, r: 0 },            // tapis en paille (petate, ocelotlmx) entre la douche et le lavabo
       { f: 'lavabo', long: 0.75, ech: [1, 1.6, 1.5], x: 7.38, y: 0.0, z: 4.55, r: -Math.PI / 2 }, // meuble vasque et miroir rond (kimlong070809) contre le mur est
     ],
   },
