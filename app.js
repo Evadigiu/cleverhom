@@ -142,7 +142,7 @@ const DECO = {
     poser: [
       { f: 'canape', long: 2.15, x: 0.62, y: 0.045, z: 4.08, r: Math.PI / 2 },    // canapé (Office Couch, jtressle) à la place de l'ancien, face à la table basse
       { f: 'tapis', long: 2.6, x: 1.15, y: 0.036, z: 4.25, r: Math.PI / 2 },      // tapis rouge (RUG with Bottom, gibbsluke) à la place du tapis gris
-      { f: 'fauteuil', haut: 0.8, x: 1.55, y: 0.04, z: 3.05, r: Math.PI },         // fauteuil bois et tissu blanc (Denague) au bout de la table basse, tourné vers elle
+      { f: 'fauteuil', haut: 0.8, x: 1.55, y: 0.04, z: 3.05, r: 0 },         // fauteuil bois et tissu blanc (Denague) au bout de la table basse ; dossier du modèle côté -z, donc r = 0 le tourne vers la table
       { f: 'tablebasse', long: 1.05, x: 1.62, y: 0.04, z: 4.3, r: Math.PI / 2 },   // table basse ovale bois et bleu (jufernandez) à la place des tables noires
       { f: 'lampe', haut: 1.05, x: 0.35, y: 0.034, z: 5.3, r: 0 },               // lampe Margot verte (Athezza, Pyramidas) à la place du lampadaire boule blanc
       { f: 'table', long: 1.23, x: 2.05, y: 0.0, z: 1.55, r: 0 },                 // table et chaises (Table & Chair Sets, everycraft) sous la suspension
