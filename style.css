@@ -125,9 +125,6 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .teint[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--corail); }
 .choix.animal { flex: 0 0 auto; min-width: 96px; align-items: center; }
 .retirer { align-self: flex-start; background: none; border: none; padding: 6px 0; font: 700 14px "Glacial Indifference", sans-serif; color: var(--gris); text-decoration: underline; cursor: pointer; }
-.habitudes { border-top: 1px solid #f3e7df; padding-top: 8px; }
-.habitudes summary { cursor: pointer; font-weight: 700; font-size: 15px; padding: 6px 0; }
-.habitudes .grille { margin-top: 8px; }
 .puce-membre { display: inline-flex; align-items: center; border-radius: 999px; }
 .puce-membre .puce { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; padding-right: 9px; }
 .corbeille { min-height: 36px; width: 36px; display: flex; align-items: center; justify-content: center; border: 1.5px solid #e8ddd5; border-left: none; border-radius: 0 999px 999px 0; background: #fff; color: #d9302c; cursor: pointer; padding: 0; }
@@ -152,3 +149,10 @@ body[data-rituel] .question, body[data-rituel] .panneau, body[data-rituel] .bull
 @keyframes voile { from { opacity: 0; } to { opacity: 1; } }
 @keyframes vers { to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .rituel, .rituel .vers, .rituel h2, .rituel .etiquette { animation-duration: 0.01s !important; animation-delay: 0s !important; } }
+
+/* étape famille : ajouts rapides et habitudes visibles */
+.puce.ajout { border-style: dashed; color: var(--sauge-fonce); border-color: #b9d3c0; background: #f4faf6; }
+.habitudes { border-top: 1px solid #f3e7df; padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.titre-habitudes { margin: 0; font-weight: 700; font-size: 15px; }
+.titre-habitudes .sous { font-weight: 400; font-size: 13px; color: var(--gris); margin-left: 4px; }
+.puces-habitudes { display: flex; flex-wrap: wrap; gap: 6px; }

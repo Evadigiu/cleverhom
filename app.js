@@ -81,8 +81,9 @@ const coques = {}; const decor = {}; const arbres = {};
 // ---------- la famille du joueur ----------
 // emplacements (x, y, z, orientation) pour les personnes puis les animaux, dans chaque vue
 const PLACES = {
-  exterieur: { gens: [[-4.3, -0.32, 3.55, -1.82], [-4.15, -0.32, 4.35, -1.42], [-4.75, -0.32, 2.95, -2.07], [-4.55, -0.32, 5.1, -1.3], [-4.95, -0.32, 2.2, -2.3], [-4.45, -0.32, 5.8, -1.2], [-5.2, -0.32, 4.6, -1.6], [-5.3, -0.32, 3.4, -1.9]],
-    betes: [[-5.0, -0.32, 4.15, 2.27], [-4.95, -0.32, 3.15, 1.9], [-4.9, -0.32, 2.0, 2.0], [-4.8, -0.32, 5.35, 2.5], [-4.65, -0.32, 6.25, 2.6], [-4.7, -0.32, 1.2, 1.8]] },
+  // jardin : deux rangs entre le cerisier (qui cache tout ce qui est en deçà de z ≈ 3,2) et la haie (z ≈ 5,6) ; les animaux devant
+  exterieur: { gens: [[-4.75, -0.32, 3.55, -1.75], [-4.75, -0.32, 4.2, -1.55], [-4.75, -0.32, 4.85, -1.4], [-4.75, -0.32, 5.45, -1.3], [-4.1, -0.32, 3.85, -1.7], [-4.1, -0.32, 4.5, -1.55], [-4.1, -0.32, 5.15, -1.4], [-4.1, -0.32, 3.35, -1.8]],
+    betes: [[-5.45, -0.32, 3.75, 2.27], [-5.45, -0.32, 4.45, 1.9], [-5.45, -0.32, 5.15, 2.0], [-5.95, -0.32, 4.1, 2.5], [-5.95, -0.32, 4.8, 2.6], [-5.95, -0.32, 3.5, 1.8]] },
   coupe: { gens: [[5.0, 0, 2.0, 2.36], [2.9, 0, 2.55, -1.88], [3.7, 0, 1.3, 3.0], [1.9, 0, 3.2, -1.0], [4.5, 0, 3.1, 2.8], [2.2, 0, 0.9, 0.5], [0.9, 0, 1.9, 1.2], [6.6, 0, 3.2, 2.6]],
     betes: [[1.4, 0, 3.6, 0.6], [2.6, 0, 4.1, 1.5], [0.9, 0, 2.6, 1.0], [4.0, 0, 2.4, 2.4], [2.0, 0, 1.6, 0.2], [5.5, 0, 1.5, 3.0]] },
   etage: { gens: [[1.4, 2.9, 3.9, 0.5], [3.55, 2.9, 1.3, -1.57], [4.1, 2.9, 3.25, -2.2], [2.5, 2.9, 4.7, 0.8], [3.0, 2.9, 0.5, -1.2], [4.6, 2.9, 3.4, -2.6], [0.8, 2.9, 3.0, 0.3], [2.0, 2.9, 2.2, 0]],
@@ -115,7 +116,8 @@ async function synchroniserFamille() {
     if (ANIMAUX[m.avatar]) { obj = new THREE.Group(); const c = g.scene.clone(true); obj.add(c); const bb = new THREE.Box3().setFromObject(c); c.scale.setScalar(ANIMAUX[m.avatar].h / (bb.max.y - bb.min.y)); c.updateMatrixWorld(true); const b2 = new THREE.Box3().setFromObject(c); const cc = b2.getCenter(new THREE.Vector3()); c.position.set(-cc.x, -b2.min.y, -cc.z); }
     else { obj = SkeletonUtils.clone(g.scene); if (g.animations[0]) { mixer = new THREE.AnimationMixer(obj); mixer.clipAction(g.animations[0]).play(); mixer.setTime(Math.random() * 3); mixers.add(mixer); } }
     obj.traverse((x) => { if (x.isMesh) { x.castShadow = true; x.frustumCulled = false; } });
-    scene.add(obj); instances.set(m.id, { avatar: m.avatar, obj, mixer });
+    obj.updateMatrixWorld(true); const h = new THREE.Box3().setFromObject(obj).max.y;
+    scene.add(obj); instances.set(m.id, { avatar: m.avatar, obj, mixer, h });
   }));
   placerFamille();
 }
@@ -193,7 +195,9 @@ async function planter(id) {
 
 // ---------- ce que le joueur choisit ----------
 let numero = 0; const membre = (prenom, age, type, avatar) => ({ id: 'm' + (++numero), prenom, age, type, avatar, habitudes: [] });
-const etat = { valeur: null, arbre: null, membres: [membre('Léa', 36, 'adulte', 'f07'), membre('Thomas', 38, 'adulte', 'm04'), membre('Lou', 8, 'enfant', 'garcon1'), membre('Biscotte', '', 'animal', 'chien')], membre: 'm1', salon: [], piece: null, chambres: 3, aventure: null, prenom: '', contact: '', accord: false, envoye: false };
+// on démarre avec le joueur seul (« Vous ») : aucune famille d'exemple ne doit finir dans la fiche du conseiller
+const moi = Object.assign(membre('', '', 'adulte', 'f07'), { moi: true });
+const etat = { valeur: null, arbre: null, membres: [moi], membre: moi.id, salon: [], piece: null, chambres: 3, aventure: null, prenom: '', contact: '', accord: false, envoye: false };
 
 const ARBRES = [
   { id: 'pommier', nom: 'Pommier', le: 'le pommier', couleur: '#d6382f', titre: 'Le pommier · ce qui se transmet', texte: "Planté par vous, cueilli par vos enfants, puis par les leurs. L'arbre des vergers alsaciens." },
@@ -209,7 +213,17 @@ const VALEURS = [
   ['ressourcer', 'Se ressourcer', 'noisetier', 'Un coin de calme pour souffler'],
 ];
 let CATALOGUE = { adulte: [], senior: [], enfant: [], animal: ['chien', 'chat'] };
-const TYPES = [['adulte', 'Adulte'], ['enfant', 'Enfant'], ['senior', 'Senior'], ['animal', 'Animal']];
+// l'âge décide de la catégorie : il ne reste à choisir que personne ou animal
+const TYPES = [['personne', 'Personne'], ['animal', 'Animal']];
+const AJOUTS = [['adulte', '+ Adulte'], ['enfant', '+ Enfant'], ['senior', '+ Senior'], ['animal', '+ Animal']];
+const NOM_TYPE = { adulte: 'Adulte', enfant: 'Enfant', senior: 'Senior', animal: 'Animal' };
+const categorieAge = (age) => { const a = parseInt(age, 10); return Number.isNaN(a) ? null : a < 18 ? 'enfant' : a >= 65 ? 'senior' : 'adulte'; };
+// visages proposés : un adulte peut prendre un visage plus âgé et inversement ; les enfants ont les leurs
+const visages = (type) => type === 'enfant' ? CATALOGUE.enfant : type === 'senior' ? CATALOGUE.senior.concat(CATALOGUE.adulte) : type === 'adulte' ? CATALOGUE.adulte.concat(CATALOGUE.senior) : CATALOGUE.animal;
+// une variante de teint compte comme le même visage, pour ne pas proposer deux fois la même personne
+const baseAvatar = (x) => { const V = CATALOGUE.teints?.variantes || {}; return Object.keys(V).find((b) => V[b].includes(x)) || x; };
+const libreParmi = (liste, sauf) => { const pris = new Set(etat.membres.filter((y) => y !== sauf).map((y) => baseAvatar(y.avatar))); return liste.find((x) => !pris.has(baseAvatar(x))) || liste[0]; };
+const nomMembre = (m) => m.prenom || (m.moi ? 'Vous' : m.type === 'animal' ? nomAnimal[m.avatar] : NOM_TYPE[m.type]);
 const MAX_MEMBRES = 8;
 const nomAnimal = new Proxy({}, { get: (_, k) => ANIMAUX[k]?.nom || 'Animal' });
 const membreActif = () => etat.membres.find((m) => m.id === etat.membre) || etat.membres[0];
@@ -220,11 +234,12 @@ function composition() {
   if (c) parts.push(c + (c > 1 ? ' chiens' : ' chien')); if (ch) parts.push(ch + (ch > 1 ? ' chats' : ' chat'));
   return parts.join(', ') || '—';
 }
-const prenoms = () => { const l = etat.membres.filter((m) => m.type !== 'animal').map((m) => m.prenom || 'Sans prénom'); return l.length > 1 ? l.slice(0, -1).join(', ') + ' et ' + l[l.length - 1] : (l[0] || 'votre famille'); };
+const prenoms = () => { const l = etat.membres.filter((m) => m.type !== 'animal').map(nomMembre); return l.length > 1 ? l.slice(0, -1).join(', ') + ' et ' + l[l.length - 1] : (l[0] || 'votre famille'); };
 const HABITUDES = [['teletravail', 'Télétravail', 'besoin d’un bureau'], ['cuisine', 'Cuisiner', 'cuisine ouverte'], ['sport', 'Sport', 'du rangement'], ['jardin', 'Jardiner', 'un potager'], ['jeux', 'Jouer', 'un coin à soi'], ['amis', 'Recevoir', 'une chambre d’amis']];
+const HABITUDES_ENFANT = ['jeux', 'sport', 'jardin', 'cuisine'];
 const HABITUDES_CHIEN = [['balade', 'Balades', 'accès jardin'], ['dodo', 'Sieste', 'un panier au calme']];
 const SALON = [['famille', 'Se poser en famille', 'canapé, plaid, série'], ['amis', 'Recevoir les amis', 'apéro et grandes tablées'], ['enfants', 'Jouer avec les enfants', 'tapis, jeux, cabanes'], ['lire', 'Lire au calme', 'un fauteuil, une lampe']];
-const PIECE = [['bureau', 'Bureau', 'pour télétravailler'], ['amis', "Chambre d'amis", 'pour recevoir'], ['jeux', 'Salle de jeux', 'pour Lou'], ['sport', 'Salle de sport', 'pour bouger'], ['bebe', 'Chambre de bébé', 'pour la suite']];
+const PIECE = [['bureau', 'Bureau', 'pour télétravailler'], ['amis', "Chambre d'amis", 'pour recevoir'], ['jeux', 'Salle de jeux', 'pour les enfants'], ['sport', 'Salle de sport', 'pour bouger'], ['bebe', 'Chambre de bébé', 'pour la suite']];
 const AVENTURES = [
   ['noel', 'La bombe de Noël', 'Une boule éclate et toute la maison s’habille de lumières et de neige.', 'De saison', '#ee3f81'],
   ['fete', 'La crémaillère', 'Guirlandes, platines et grande tablée : les voisins débarquent.', 'Avec les voisins', '#f68f7c'],
@@ -239,9 +254,18 @@ const puceHtml = (p) => p.sous
   ? `<button type="button" class="puce valeur" data-id="${p.id}" aria-pressed="${p.on}"><b>${esc(p.l)}</b><span>${esc(p.sous)}</span></button>`
   : p.suppr
   ? `<span class="puce-membre"><button type="button" class="puce" data-id="${p.id}" aria-pressed="${p.on}">${esc(p.l)}</button><button type="button" class="corbeille" data-suppr="${p.id}" aria-label="Retirer ${esc(p.l)} de la famille">${CORBEILLE}</button></span>`
-  : `<button type="button" class="puce" data-id="${p.id}" aria-pressed="${p.on}">${esc(p.l)}</button>`;
+  : `<button type="button" class="puce${p.ajout ? ' ajout' : ''}" data-id="${p.id}" aria-pressed="${p.on}">${esc(p.l)}</button>`;
 const choix = (id, titre, sous, on, classe = '') => `<button type="button" class="choix ${classe}" data-id="${id}" aria-pressed="${!!on}"><b>${esc(titre)}</b>${sous ? `<span>${esc(sous)}</span>` : ''}</button>`;
 
+function visagesHtml(m) {
+  const animal = m.type === 'animal', liste = visages(m.type);
+  // teint de peau (enfants) : chaque portrait de base a des variantes ; on garde le teint choisi quand on change de visage
+  const V = CATALOGUE.teints?.variantes || {}, base = Object.keys(V).find((b) => V[b].includes(m.avatar)), iTeint = base ? V[base].indexOf(m.avatar) : 0;
+  return `<div class="portraits">${liste.map((x) => animal
+      ? `<button type="button" class="choix animal" data-avatar="${x}" aria-pressed="${m.avatar === x}"><b>${nomAnimal[x]}</b></button>`
+      : `<button type="button" class="portrait" data-avatar="${V[x] ? V[x][iTeint] : x}" aria-pressed="${m.avatar === x || base === x}" aria-label="Personnage ${x}"><img src="assets/avatars/${V[x] ? V[x][iTeint] : x}.webp" alt="" width="64" height="64" loading="lazy"></button>`).join('')}</div>`
+    + (base ? `<div class="teints"><span>Teint</span>${V[base].map((v, i) => `<button type="button" class="teint" data-avatar="${v}" aria-pressed="${i === iTeint}" aria-label="Teint ${CATALOGUE.teints.noms[i].toLowerCase()}" style="background:${CATALOGUE.teints.couleurs[i]}"></button>`).join('')}</div>` : '');
+}
 const ORDRE = ['accueil', 'arbre', 'famille', 'salon', 'etage', 'aventures', 'fiche'];
 const ECRANS = {
   arbre: {
@@ -260,37 +284,35 @@ const ECRANS = {
   },
   famille: {
     vue: 'exterieur', plan: 'famille', etape: 'Étape 2 sur 4 · Votre famille',
-    intitule: () => `Votre ${ARBRES.find((x) => x.id === etat.arbre)?.nom.toLowerCase() || 'arbre'} est planté. Qui vit dans la maison ?`,
-    puces: () => etat.membres.map((m) => ({ id: m.id, l: m.prenom || (m.type === 'animal' ? nomAnimal[m.avatar] : 'Sans prénom'), on: etat.membre === m.id, suppr: etat.membres.length > 1 }))
-      .concat(etat.membres.length < MAX_MEMBRES ? [{ id: 'ajouter', l: '+ Ajouter', on: false }] : []),
+    intitule: () => `Votre ${ARBRES.find((x) => x.id === etat.arbre)?.nom.toLowerCase() || 'arbre'} est planté. Qui va vivre ici avec vous ?`,
+    // une bulle au-dessus du personnage sélectionné, pour savoir qui est qui dans le jardin
+    get bulle() { const m = membreActif(), it = instances.get(m.id); if (!it || !it.obj.visible) return null; const p = it.obj.position; return { p: [p.x, p.y + (it.h || 1.6) + 0.18, p.z], t: nomMembre(m) }; },
+    puces: () => etat.membres.map((m) => ({ id: m.id, l: nomMembre(m), on: etat.membre === m.id, suppr: !m.moi }))
+      // au début, les quatre ajouts sont en vue ; ensuite un seul « + Ajouter » qui les déplie, pour garder le bandeau court
+      .concat(etat.membres.length >= MAX_MEMBRES ? [] : etat.membres.length <= 2 || etat.ajoutOuvert ? AJOUTS.map(([t, l]) => ({ id: 'ajouter-' + t, l, on: false, ajout: true })) : [{ id: 'deplier', l: '+ Ajouter', on: false, ajout: true }]),
     puce: (id) => {
-      if (id !== 'ajouter') { etat.membre = id; return; }
-      const pris = new Set(etat.membres.map((m) => m.avatar)); const av = CATALOGUE.adulte.find((x) => !pris.has(x)) || CATALOGUE.adulte[0];
-      const m = membre('', '', 'adulte', av); etat.membres.push(m); etat.membre = m.id; synchroniserFamille();
+      if (id === 'deplier') { etat.ajoutOuvert = true; return; }
+      if (!id.startsWith('ajouter-')) { etat.membre = id; etat.ajoutOuvert = false; return; }
+      etat.ajoutOuvert = false;
+      const t = id.slice(8), liste = t === 'animal' ? CATALOGUE.animal : CATALOGUE[t];
+      const m = membre('', '', t, libreParmi(liste)); etat.membres.push(m); etat.membre = m.id; synchroniserFamille();
+      setTimeout(() => $('prenom-m')?.focus({ preventScroll: true }), 50);
     },
     contenu: () => {
       const m = membreActif(); const animal = m.type === 'animal';
-      const liste = CATALOGUE[m.type] || [];
-      // teint de peau (enfants) : chaque portrait de base a des variantes ; on garde le teint choisi quand on change de visage
-      const V = CATALOGUE.teints?.variantes || {}, base = Object.keys(V).find((b) => V[b].includes(m.avatar)), iTeint = base ? V[base].indexOf(m.avatar) : 0;
-      return `<div class="champs"><div class="champ"><label for="prenom-m">Prénom</label><input id="prenom-m" autocomplete="off" maxlength="20" placeholder="${animal ? 'Son nom' : 'Son prénom'}" value="${esc(m.prenom)}"></div>`
-        + (animal ? '' : `<div class="champ age"><label for="age-m">Âge</label><input id="age-m" type="number" inputmode="numeric" min="0" max="110" value="${esc(m.age)}"></div>`) + `</div>`
-        + `<div class="onglets">${TYPES.map(([t, l]) => `<button type="button" class="puce" data-type="${t}" aria-pressed="${m.type === t}">${l}</button>`).join('')}</div>`
-        + `<div class="portraits">${liste.map((x) => animal
-            ? `<button type="button" class="choix animal" data-avatar="${x}" aria-pressed="${m.avatar === x}"><b>${nomAnimal[x]}</b></button>`
-            : `<button type="button" class="portrait" data-avatar="${V[x] ? V[x][iTeint] : x}" aria-pressed="${m.avatar === x || base === x}" aria-label="Personnage ${x}"><img src="assets/avatars/${V[x] ? V[x][iTeint] : x}.webp" alt="" width="64" height="64" loading="lazy"></button>`).join('')}</div>`
-        + (base ? `<div class="teints"><span>Teint</span>${V[base].map((v, i) => `<button type="button" class="teint" data-avatar="${v}" aria-pressed="${i === iTeint}" aria-label="Teint ${CATALOGUE.teints.noms[i].toLowerCase()}" style="background:${CATALOGUE.teints.couleurs[i]}"></button>`).join('')}</div>` : '')
-        + (animal ? '' : `<details class="habitudes" ${etat.habitudesOuvert ? 'open' : ''}><summary>Ses habitudes à la maison${m.habitudes.length ? ' · ' + m.habitudes.length : ''}</summary><div class="grille">${HABITUDES.map(([id, l, sous]) => choix(id, l, sous, m.habitudes.includes(id))).join('')}</div></details>`)
-;
+      return `<div class="champs"><div class="champ"><label for="prenom-m">${m.moi ? 'Votre prénom' : 'Prénom'}</label><input id="prenom-m" autocomplete="${m.moi ? 'given-name' : 'off'}" maxlength="20" placeholder="${animal ? 'Son nom' : m.moi ? 'Votre prénom' : 'Son prénom'}" value="${esc(m.prenom)}"></div>`
+        + (animal ? '' : `<div class="champ age"><label for="age-m">Âge</label><input id="age-m" type="number" inputmode="numeric" min="0" max="110" placeholder="ans" value="${esc(m.age)}"></div>`) + `</div>`
+        + (m.moi ? '' : `<div class="onglets">${TYPES.map(([t, l]) => `<button type="button" class="puce" data-type="${t}" aria-pressed="${t === 'animal' ? animal : !animal}">${l}</button>`).join('')}</div>`)
+        + `<div id="visages">${visagesHtml(m)}</div>`
+        + (animal ? '' : `<div class="habitudes"><p class="titre-habitudes">${m.moi ? 'Vos habitudes' : 'Ses habitudes'} à la maison <span class="sous">plusieurs choix</span></p><div class="puces-habitudes">${HABITUDES.filter(([id]) => m.type !== 'enfant' || HABITUDES_ENFANT.includes(id)).map(([id, l]) => `<button type="button" class="puce" data-id="${id}" aria-pressed="${m.habitudes.includes(id)}">${l}</button>`).join('')}</div></div>`);
     },
     clic: (id, el) => {
       const m = membreActif();
-      if (el.dataset.type) { const t = el.dataset.type; if (t !== m.type) { m.type = t; m.avatar = CATALOGUE[t][0]; if (t === 'animal') m.age = ''; synchroniserFamille(); } return; }
+      if (el.dataset.type) { const animal = el.dataset.type === 'animal'; if (animal !== (m.type === 'animal')) { m.type = animal ? 'animal' : (categorieAge(m.age) || 'adulte'); m.avatar = visages(m.type)[0]; m.habitudes = []; if (animal) m.age = ''; synchroniserFamille(); } return; }
       if (el.dataset.avatar) { m.avatar = el.dataset.avatar; synchroniserFamille(); return; }
-      if (el.dataset.action === 'retirer') { etat.membres = etat.membres.filter((x) => x.id !== m.id); etat.membre = etat.membres[0].id; synchroniserFamille(); return; }
       const i = m.habitudes.indexOf(id); if (i >= 0) m.habitudes.splice(i, 1); else m.habitudes.push(id);
     },
-    suite: () => 'Entrer dans la maison', pret: () => etat.membres.some((m) => m.type !== 'animal'),
+    suite: () => moi.prenom.trim() ? 'Entrer dans la maison' : 'Indiquez votre prénom', pret: () => !!moi.prenom.trim(),
   },
   salon: {
     vue: 'coupe', plan: 'salon', etape: 'Étape 3 sur 4 · Le salon', bulle: { p: [1.5, 1.4, 4.3], t: 'Le salon' },
@@ -320,10 +342,11 @@ const ECRANS = {
     intitule: 'Bravo ! Votre Clever’hom est prête.',
     contenu: () => {
       const lignes = [['Votre arbre', (ARBRES.find((x) => x.id === etat.arbre)?.nom || '—') + (etat.valeur ? ' · ' + libelle(VALEURS, etat.valeur).toLowerCase() : '')], ['La famille', composition()],
+        ['Habitudes', [...new Set(etat.membres.flatMap((m) => m.habitudes))].map((h) => libelle(HABITUDES, h)).join(', ') || '—'],
         ['Le salon', etat.salon.map((s) => libelle(SALON, s)).join(', ') || '—'], ['La pièce de 9 m²', libelle(PIECE, etat.piece)], ['Chambres souhaitées', etat.chambres]];
       return `<div>${lignes.map(([a, b]) => `<div class="ligne-recap"><span>${a}</span><b>${esc(b)}</b></div>`).join('')}</div>`
         + (etat.envoye ? `<p class="message">C'est noté ! Dans cette version de démonstration, la fiche n'est pas encore transmise au conseiller.</p>` :
-        `<div class="champs"><div class="champ"><label for="prenom">Prénom</label><input id="prenom" autocomplete="given-name" value="${esc(etat.prenom)}"></div><div class="champ"><label for="contact">Téléphone ou e-mail</label><input id="contact" autocomplete="tel" value="${esc(etat.contact)}"></div></div>
+        `<div class="champs"><div class="champ"><label for="prenom">Prénom</label><input id="prenom" autocomplete="given-name" value="${esc(etat.prenom || moi.prenom)}"></div><div class="champ"><label for="contact">Téléphone ou e-mail</label><input id="contact" autocomplete="tel" value="${esc(etat.contact)}"></div></div>
         <label class="consentement"><input type="checkbox" id="accord" ${etat.accord ? 'checked' : ''}><span>J'accepte qu'un conseiller Clever'hom me recontacte au sujet de ma future maison.</span></label>`);
     },
     suite: () => etat.envoye ? 'Recommencer' : 'Envoyer au conseiller', pret: () => etat.envoye || (etat.accord && etat.contact.trim().length >= 6),
@@ -358,16 +381,19 @@ $('puces').addEventListener('click', (ev) => {
   if (x) { const id = x.dataset.suppr; etat.membres = etat.membres.filter((m) => m.id !== id); if (etat.membre === id) etat.membre = etat.membres[0].id; synchroniserFamille(); dessiner(); return; }
   const b = ev.target.closest('.puce'); if (!b) return; ECRANS[ecran].puce(b.dataset.id); dessiner(); });
 $('contenu').addEventListener('click', (ev) => { const b = ev.target.closest('[data-id],[data-type],[data-avatar],[data-action]'); if (!b || !ECRANS[ecran].clic) return; ECRANS[ecran].clic(b.dataset.id, b); dessiner(); });
+let attenteAge = null;
 $('contenu').addEventListener('input', (ev) => {
   if (ev.target.id === 'prenom') etat.prenom = ev.target.value;
   if (ev.target.id === 'contact') etat.contact = ev.target.value;
   if (ev.target.id === 'accord') etat.accord = ev.target.checked;
+  if (ev.target.id === 'age-m') { clearTimeout(attenteAge); attenteAge = setTimeout(() => { const m = membreActif(), c = categorieAge(m.age);
+    if (c && c !== m.type && m.type !== 'animal') { m.type = c; m.avatar = libreParmi(visages(c), m);
+      if (c === 'enfant') m.habitudes = m.habitudes.filter((h) => HABITUDES_ENFANT.includes(h)); synchroniserFamille(); $('visages').innerHTML = visagesHtml(m); $('puces').innerHTML = ECRANS[ecran].puces().map(puceHtml).join(''); } }, 600); }
   if (ev.target.id === 'prenom-m' || ev.target.id === 'age-m') { const m = membreActif(); if (ev.target.id === 'prenom-m') m.prenom = ev.target.value.trim() ? ev.target.value : ''; else m.age = ev.target.value;
     const e = ECRANS[ecran]; $('puces').innerHTML = e.puces().map(puceHtml).join('');
  }
-  $('suite').disabled = !ECRANS[ecran].pret();
+  $('suite').disabled = !ECRANS[ecran].pret(); $('suite').textContent = ECRANS[ecran].suite();
 });
-$('contenu').addEventListener('toggle', (ev) => { if (ev.target.matches('details.habitudes')) etat.habitudesOuvert = ev.target.open; }, true);
 // ---------- le moment de l'arbre ----------
 const VOEUX = { transmettre: 'Pour tout ce que vous transmettrez.', retrouver: 'Pour tous les moments où vous vous retrouverez.', recevoir: 'Pour tous ceux que vous recevrez.', ressourcer: 'Pour les jours où vous viendrez vous ressourcer.' };
 function rituel(nom) { $('rituel-intro').classList.remove('tout'); $('rituel-plaque').classList.remove('tout'); document.body.dataset.rituel = nom || ''; if (!nom) delete document.body.dataset.rituel; $('rituel-intro').hidden = nom !== 'intro'; $('rituel-plaque').hidden = nom !== 'plaque'; }
