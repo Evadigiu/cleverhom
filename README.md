@@ -1,6 +1,6 @@
 # Ma Maison en Jeu
 
-Mini-jeu web 3D Pomelo × Clever'hom, joué sur téléphone après une porte ouverte (accès par QR code).
+Mini-jeu web 3D pour Maisons Clever'hom, joué sur téléphone après une porte ouverte (accès par QR code).
 
 Le joueur plante son arbre, fait entrer sa famille, découvre la Clever'hom, vit une aventure
 (la bombe de Noël, la crémaillère, la famille qui s'agrandit), puis peut envoyer son projet
