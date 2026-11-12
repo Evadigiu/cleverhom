@@ -149,6 +149,15 @@ function montrer(nom, fam = true) {
 // terre au pied de l'arbre, visible seulement une fois l'arbre planté
 const terre = new THREE.Mesh(new THREE.CircleGeometry(0.75, 40), new THREE.MeshStandardMaterial({ color: '#6b4b33', roughness: 1 }));
 terre.rotation.x = -Math.PI / 2; terre.position.set(-5.6, -0.295, 0.9); terre.receiveShadow = true; terre.visible = false; scene.add(terre);
+// motte de terre photoscannée (banque Sketchfab) au pied de l'arbre ; le disque « terre » ne sert plus que de repère
+const motte = new THREE.Group(); motte.position.set(terre.position.x, -0.315, terre.position.z); motte.visible = false; scene.add(motte);
+let motteChargee = null;
+function chargerMotte() {
+  return (motteChargee ||= charger('terre/motte').then((g) => { const o = g.scene; const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+    const k = 1.9 / Math.max(t.x, t.z); o.scale.set(k, k * 0.7, k); o.updateMatrixWorld(true);
+    const b2 = new THREE.Box3().setFromObject(o), c = b2.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b2.min.y + 0.005, -c.z);
+    o.traverse((m) => { if (m.isMesh) { m.castShadow = false; m.receiveShadow = true; } }); motte.add(o); }));
+}
 // recentre un arbre pour que son tronc (le bas du modèle) tombe au milieu de la terre
 // arbre : le pied du tronc au centre de la terre ; arbuste sans tronc net (noisetier) : le milieu du feuillage
 const PAR_COURONNE = new Set(['noisetier']);
@@ -175,7 +184,7 @@ function avancerCroissance(dt) {
   if (croissance.t >= 1) croissance = null;
 }
 async function planter(id) {
-  terre.visible = !!id;
+  motte.visible = !!id; if (id) chargerMotte();
   if (!id) { for (const a of Object.values(arbres)) if (a.scene) a.scene.visible = false; return; }
   if (!arbres[id]) chargerArbre(id);
   const g = await arbres[id];
