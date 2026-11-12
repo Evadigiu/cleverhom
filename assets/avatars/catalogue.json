@@ -1,6 +1,58 @@
 {
- "adulte": ["fb1", "f04", "f07", "fs2", "f12", "hb2", "hb6", "hb4", "m04", "m09"],
- "senior": ["fb2", "m03", "m14"],
- "enfant": ["fille1", "garcon1"],
- "animal": ["chien", "chien_labrador", "chien_bergerallemand", "chien_husky", "chien_bordercollie", "chien_beagle", "chien_jackrussell", "chien_corgi", "chat"]
+ "adulte": [
+  "fb1",
+  "f04",
+  "f07",
+  "fs2",
+  "f12",
+  "hb2",
+  "hb6",
+  "hb4",
+  "m04",
+  "m09"
+ ],
+ "senior": [
+  "fb2",
+  "m03",
+  "m14"
+ ],
+ "enfant": [
+  "fille1",
+  "garcon1"
+ ],
+ "animal": [
+  "chien",
+  "chien_labrador",
+  "chien_bergerallemand",
+  "chien_husky",
+  "chien_bordercollie",
+  "chien_beagle",
+  "chien_jackrussell",
+  "chien_corgi",
+  "chat"
+ ],
+ "teints": {
+  "noms": [
+   "Clair",
+   "Mat",
+   "Métissé"
+  ],
+  "couleurs": [
+   "#ecc8a8",
+   "#b07a52",
+   "#7a4b30"
+  ],
+  "variantes": {
+   "fille1": [
+    "fille1",
+    "fille1_mat",
+    "fille1_metis"
+   ],
+   "garcon1": [
+    "garcon1",
+    "garcon1_mat",
+    "garcon1_metis"
+   ]
+  }
+ }
 }

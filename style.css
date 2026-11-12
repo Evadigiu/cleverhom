@@ -113,6 +113,10 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .portrait { flex: 0 0 auto; width: 68px; height: 68px; padding: 0; border-radius: 34px; border: 3px solid #efe6df; background: var(--fond); overflow: hidden; cursor: pointer; scroll-snap-align: start; }
 .portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .portrait[aria-pressed="true"] { border-color: var(--corail); }
+.teints { display: flex; align-items: center; gap: 10px; }
+.teints span { font-size: 13px; font-weight: 700; color: var(--texte-doux, #6b625d); margin-right: 2px; }
+.teint { width: 36px; height: 36px; border-radius: 18px; padding: 0; border: 3px solid #fff; box-shadow: 0 0 0 1.5px #e8ddd5; cursor: pointer; }
+.teint[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--corail); }
 .choix.animal { flex: 0 0 auto; min-width: 96px; align-items: center; }
 .retirer { align-self: flex-start; background: none; border: none; padding: 6px 0; font: 700 14px "Glacial Indifference", sans-serif; color: var(--gris); text-decoration: underline; cursor: pointer; }
 .habitudes { border-top: 1px solid #f3e7df; padding-top: 8px; }

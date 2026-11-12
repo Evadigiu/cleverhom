@@ -235,12 +235,15 @@ const ECRANS = {
     contenu: () => {
       const m = membreActif(); const animal = m.type === 'animal';
       const liste = CATALOGUE[m.type] || [];
+      // teint de peau (enfants) : chaque portrait de base a des variantes ; on garde le teint choisi quand on change de visage
+      const V = CATALOGUE.teints?.variantes || {}, base = Object.keys(V).find((b) => V[b].includes(m.avatar)), iTeint = base ? V[base].indexOf(m.avatar) : 0;
       return `<div class="champs"><div class="champ"><label for="prenom-m">Prénom</label><input id="prenom-m" autocomplete="off" maxlength="20" placeholder="${animal ? 'Son nom' : 'Son prénom'}" value="${esc(m.prenom)}"></div>`
         + (animal ? '' : `<div class="champ age"><label for="age-m">Âge</label><input id="age-m" type="number" inputmode="numeric" min="0" max="110" value="${esc(m.age)}"></div>`) + `</div>`
         + `<div class="onglets">${TYPES.map(([t, l]) => `<button type="button" class="puce" data-type="${t}" aria-pressed="${m.type === t}">${l}</button>`).join('')}</div>`
         + `<div class="portraits">${liste.map((x) => animal
             ? `<button type="button" class="choix animal" data-avatar="${x}" aria-pressed="${m.avatar === x}"><b>${nomAnimal[x]}</b></button>`
-            : `<button type="button" class="portrait" data-avatar="${x}" aria-pressed="${m.avatar === x}" aria-label="Personnage ${x}"><img src="assets/avatars/${x}.webp" alt="" width="64" height="64" loading="lazy"></button>`).join('')}</div>`
+            : `<button type="button" class="portrait" data-avatar="${V[x] ? V[x][iTeint] : x}" aria-pressed="${m.avatar === x || base === x}" aria-label="Personnage ${x}"><img src="assets/avatars/${V[x] ? V[x][iTeint] : x}.webp" alt="" width="64" height="64" loading="lazy"></button>`).join('')}</div>`
+        + (base ? `<div class="teints"><span>Teint</span>${V[base].map((v, i) => `<button type="button" class="teint" data-avatar="${v}" aria-pressed="${i === iTeint}" aria-label="Teint ${CATALOGUE.teints.noms[i].toLowerCase()}" style="background:${CATALOGUE.teints.couleurs[i]}"></button>`).join('')}</div>` : '')
         + (animal ? '' : `<details class="habitudes" ${etat.habitudesOuvert ? 'open' : ''}><summary>Ses habitudes à la maison${m.habitudes.length ? ' · ' + m.habitudes.length : ''}</summary><div class="grille">${HABITUDES.map(([id, l, sous]) => choix(id, l, sous, m.habitudes.includes(id))).join('')}</div></details>`)
 ;
     },
