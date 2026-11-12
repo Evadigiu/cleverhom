@@ -201,7 +201,13 @@ const ARBRES = [
   { id: 'lilas', nom: 'Lilas', le: 'le lilas', couleur: '#b48ad6', titre: 'Le lilas · la tendresse', texte: "L'amitié et l'accueil. Un arbuste qui parfume le jardin en mai." },
   { id: 'noisetier', nom: 'Noisetier', le: 'le noisetier', couleur: '#a8743f', titre: 'Le noisetier · la sagesse', texte: "La patience et l'ancrage. Un arbuste généreux, des noisettes à l'automne." },
 ];
-const VALEURS = [['transmettre', 'Transmettre', 'pommier'], ['retrouver', 'Se retrouver', 'cerisier'], ['recevoir', 'Recevoir', 'lilas'], ['ressourcer', 'Se ressourcer', 'noisetier']];
+// chaque valeur oriente vers un arbre ; la petite phrase dit ce qu'elle veut dire, concrètement, dans une maison
+const VALEURS = [
+  ['transmettre', 'Transmettre', 'pommier', 'Bâtir ce qui restera à vos enfants'],
+  ['retrouver', 'Se retrouver', 'cerisier', 'Les repas, les rires, la famille réunie'],
+  ['recevoir', 'Recevoir', 'lilas', 'Une maison ouverte aux amis et aux voisins'],
+  ['ressourcer', 'Se ressourcer', 'noisetier', 'Un coin de calme pour souffler'],
+];
 let CATALOGUE = { adulte: [], senior: [], enfant: [], animal: ['chien', 'chat'] };
 const TYPES = [['adulte', 'Adulte'], ['enfant', 'Enfant'], ['senior', 'Senior'], ['animal', 'Animal']];
 const MAX_MEMBRES = 8;
@@ -229,7 +235,9 @@ const libelle = (liste, id) => (liste.find((x) => x[0] === id) || [, '—'])[1];
 // ---------- écrans ----------
 const esc = (s) => String(s).replace(/[&<>"]/g, (x) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[x]));
 const CORBEILLE = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
-const puceHtml = (p) => p.suppr
+const puceHtml = (p) => p.sous
+  ? `<button type="button" class="puce valeur" data-id="${p.id}" aria-pressed="${p.on}"><b>${esc(p.l)}</b><span>${esc(p.sous)}</span></button>`
+  : p.suppr
   ? `<span class="puce-membre"><button type="button" class="puce" data-id="${p.id}" aria-pressed="${p.on}">${esc(p.l)}</button><button type="button" class="corbeille" data-suppr="${p.id}" aria-label="Retirer ${esc(p.l)} de la famille">${CORBEILLE}</button></span>`
   : `<button type="button" class="puce" data-id="${p.id}" aria-pressed="${p.on}">${esc(p.l)}</button>`;
 const choix = (id, titre, sous, on, classe = '') => `<button type="button" class="choix ${classe}" data-id="${id}" aria-pressed="${!!on}"><b>${esc(titre)}</b>${sous ? `<span>${esc(sous)}</span>` : ''}</button>`;
@@ -241,11 +249,12 @@ const ECRANS = {
     // avant le choix : la terre est déjà retournée et une bulle montre où l'arbre sera planté
     get bulle() { return etat.arbre ? null : { p: [terre.position.x, 0.25, terre.position.z], t: 'Votre arbre ici' }; },
     intitule: 'Avant d’entrer, qu’est-ce qui compte le plus pour vous ?',
-    puces: () => VALEURS.map(([id, l]) => ({ id, l, on: etat.valeur === id })),
+    puces: () => VALEURS.map(([id, l, , sous]) => ({ id, l, sous, on: etat.valeur === id })),
     puce: (id) => { etat.valeur = id; choisirArbre(VALEURS.find((v) => v[0] === id)[2]); },
     contenu: () => { const a = ARBRES.find((x) => x.id === etat.arbre);
       return `<div class="grille quatre">${ARBRES.map((x) => `<button type="button" class="choix arbre" data-id="${x.id}" aria-pressed="${etat.arbre === x.id}"><i style="background:${x.couleur}"></i><b>${x.nom}</b></button>`).join('')}</div>`
-        + (a ? `<div class="encart"><p class="titre-panneau">${a.titre}</p><p class="sous">${a.texte}</p></div>` : `<p class="sous">Choisissez l'arbre que vous planterez dans votre jardin.</p>`); },
+        + (a ? `<div class="encart">${(() => { const v = VALEURS.find((x) => x[0] === etat.valeur && x[2] === a.id); return v ? `<p class="etiquette">Pour ${v[1].toLowerCase()}</p>` : ''; })()}<p class="titre-panneau">${a.titre}</p><p class="sous">${a.texte}</p></div>`
+          : `<p class="sous">Chaque réponse vous oriente vers un arbre. Vous restez libre de choisir celui qui vous plaît.</p>`); },
     clic: (id) => choisirArbre(id),
     suite: () => etat.arbre ? 'Planter ' + ARBRES.find((x) => x.id === etat.arbre).le : 'Choisissez un arbre', pret: () => !!etat.arbre,
   },

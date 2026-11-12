@@ -61,6 +61,12 @@ body:not([data-ecran="accueil"]) .seulement-accueil { display: none; }
 .puces:empty { display: none; }
 .puce { min-height: 36px; border-radius: 999px; padding: 6px 13px; font: 700 14px "Glacial Indifference", sans-serif; border: 1.5px solid #e8ddd5; background: #fff; color: var(--texte); cursor: pointer; }
 .puce[aria-pressed="true"] { background: var(--texte); color: #fff; border-color: var(--texte); }
+/* valeurs de l'étape arbre : quatre cartes avec une petite phrase */
+.puces:has(.valeur) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.puce.valeur { border-radius: 16px; padding: 8px 11px 9px; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+.puce.valeur b { font-size: 15px; }
+.puce.valeur span { font-weight: 400; font-size: 13px; line-height: 1.25; color: var(--gris); }
+.puce.valeur[aria-pressed="true"] span { color: #f3e7df; }
 
 .bulle { position: fixed; transform: translate(-50%, -100%); background: var(--texte); color: #fff; font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 999px; white-space: nowrap; pointer-events: none; }
 .bulle::after { content: ""; position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); border: 7px solid transparent; border-bottom: 0; border-top-color: var(--texte); }
