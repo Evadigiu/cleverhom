@@ -52,6 +52,9 @@ const PLANS = {
   salon: { pos: [5.5, 10, -1.5], cible: [1.4, -0.9, 4.1], fov: 38 },
   etage: { pos: [-19, 31, -2], cible: [2.6, 1.2, 2.2], fov: 26 },
   aventures: { pos: [-22, 9, -6], cible: [1.0, -3.2, 3.2], fov: 46 },
+  noel: { pos: [-12.2, 2.3, 7.2], cible: [-6.4, 0.25, 3.1], fov: 46 },
+  noelDehors: { pos: [-15, 4.0, 6.8], cible: [-2.2, 1.1, 2.0], fov: 50 },
+  noelMaison: { pos: [6.6, 9.2, -4.6], cible: [1.2, -0.6, 1.9], fov: 48 },
   fiche: { pos: [-20, 12, -8], cible: [0.5, -5.5, 3.0], fov: 46 },
 };
 let trajet = null; // transition douce de la caméra
@@ -187,7 +190,8 @@ function mursBlancs(oui) {
       if (mat.userData.mapOrigine === undefined) { if (!mat.map) { mat.userData.mapOrigine = null; continue; } mat.userData.mapOrigine = mat.map; }
       const o = mat.userData.mapOrigine; if (!o) continue; const b = sansSauge(o); if (!b) continue; mat.map = oui ? b : o; } });
 }
-const cache = (nom, m) => { const c = DECO[nom]?.cacher; return !!c && (typeof c === 'function' ? c(m) : c.test(m.name)); };
+const NOEL_CACHE = /^(Stool_02_Wood_0|Flower-Vase|Phalaenopsis)/;
+const cache = (nom, m) => { if (nom !== 'commun' && noelActif && NOEL_CACHE.test(m.name)) return true; const c = DECO[nom]?.cacher; return !!c && (typeof c === 'function' ? c(m) : c.test(m.name)); };
 async function poserDeco(nom) {
   if (decoPosee[nom]) return decoPosee[nom]; const D = DECO[nom];
   const groupe = new THREE.Group(); decoPosee[nom] = groupe; groupe.visible = false; scene.add(groupe);
@@ -195,14 +199,14 @@ async function poserDeco(nom) {
     const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3()); o.scale.multiplyScalar(p.haut ? p.haut / t.y : p.long / Math.max(t.x, t.z));
     if (p.ech) o.scale.multiply(new THREE.Vector3(...p.ech));
     const pivot = new THREE.Group(); pivot.add(o); o.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3());
-    o.position.set(-c.x, -b.min.y, -c.z); pivot.position.set(p.x, p.y, p.z); pivot.rotation.y = p.r; pivot.userData.etage = !!p.etage;
+    o.position.set(-c.x, -b.min.y, -c.z); pivot.position.set(p.x, p.y, p.z); pivot.rotation.y = p.r; pivot.userData.etage = !!p.etage; pivot.userData.f = p.f;
     o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true; if (p.verre && p.verre.test(m.name)) m.material = VERRE; if (!p.etage) for (const mt of [].concat(m.material)) mt.clippingPlanes = COUPE_RDC; }); groupe.add(pivot); }));
   return groupe;
 }
 // meubles du rez-de-chaussée visibles quand l'intérieur l'est, ceux de l'étage quand l'étage l'est
 function visibiliteDeco() {
   for (const [k, g] of Object.entries(decoPosee)) { g.visible = k === 'commun' || k === styleActif;
-    for (const p of g.children) p.visible = p.userData.etage ? !!decor.etage?.visible : !!decor.interieur?.visible; }
+    for (const p of g.children) p.visible = (p.userData.etage ? !!decor.etage?.visible : !!decor.interieur?.visible) && !(noelActif && /^(table|tulipes)$/.test(p.userData.f)); }
 }
 async function appliquerStyle(nom) {
   styleActif = nom;
@@ -210,6 +214,86 @@ async function appliquerStyle(nom) {
   mursBlancs(nom === 'chaleureux'); visibiliteDeco();
   if (DECO[nom]) { await poserDeco(nom); visibiliteDeco(); }
 }
+
+// ---------- l'aventure de Noël ----------
+// une boule à toucher dans le jardin ; au toucher : confettis, puis toute la maison se pare de Noël (modèles Sketchfab CC BY, chargés à la demande)
+const NOEL = [
+  // intérieur
+  { f: 'sapin', haut: 2.0, p: [[0.62, 0.034, 0.62, 0.3]] },                                    // sapin décoré dans l'angle de la baie
+  { f: 'cadeaux2', haut: 0.55, p: [[1.35, 0.034, 0.45, 0.5]] },                                 // pile de cadeaux au pied du sapin
+  { f: 'diner', long: 1.9, p: [[2.05, 0.034, 1.55, 0]] },                                       // table du réveillon à la place de la table
+  // façade côté jardin
+  { f: 'couronne', long: 1.7, p: [[-0.36, 2.15, 2.1, -Math.PI / 2]], facade: true },                          // guirlande de sapin et boules au-dessus de la baie
+  { f: 'panneau', long: 2.4, p: [[-0.36, 2.8, 2.1, -Math.PI / 2]], brille: '#ff3b30', facade: true },       // « Merry Christmas » lumineux
+  // jardin
+  { f: 'sapin_neige', haut: 2.6, p: [[-9.4, -0.32, -0.8, 0.4], [-10.6, -0.32, 1.6, 1.3]] },
+  { f: 'traineau', long: 1.7, p: [[-7.7, -0.32, 4.85, Math.PI / 2]] },
+  { f: 'cadeaux1', long: 0.9, p: [[-6.8, -0.32, 5.3, 0.3]] },
+  { f: 'village', long: 0.55, p: [[-1.35, 0.9, 1.55, 0.5]] },                                  // village de Noël sur la table de la terrasse
+  { f: 'boule_deco', haut: 0.55, p: [[-6.3, -0.32, 2.6, 0], [-6.9, -0.32, 3.3, 1], [-3.5, -0.32, 0.4, 2]] },
+  { f: 'sucres', haut: 0.6, p: [[-3.1, -0.32, 0.9, 0], [-3.1, -0.32, 2.1, 0], [-3.1, -0.32, 6.6, 0], [-3.1, -0.32, -0.3, 0]] },
+  { f: 'guirlande', long: 0.9, p: [-9.3, -8.3, -7.3, -6.3, -5.3, -4.3].map((x) => [x, 1.15, 5.8, Math.PI / 2]), brille: true },
+];
+const noel = { groupe: null, charge: null, boule: null, fait: false, dedans: false, pops: [] };
+// dehors : façade et jardin ; dedans : vue en coupe du rez-de-chaussée (les décos de façade, hors de la coupe, sont alors cachées)
+function vueNoel(dedans) { noel.dedans = dedans; montrer(dedans ? 'coupe' : 'exterieur', true); viser(dedans ? 'noelMaison' : 'noelDehors');
+  if (noel.groupe) for (const p of noel.groupe.children) if (p.userData.facade) p.visible = !dedans; }
+function chargerNoel() {
+  if (noel.charge) return noel.charge;
+  noel.groupe = new THREE.Group(); noel.groupe.visible = false; scene.add(noel.groupe);
+  noel.charge = Promise.all(NOEL.map(async (d) => { const g = await charger('noel/' + d.f);
+    for (const [x, y, z, r] of d.p) { const o = g.scene.clone(true); const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+      o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
+      const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
+      const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(x, y, z); pivot.rotation.y = r || 0; pivot.userData.facade = !!d.facade;
+      o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true;
+        if (d.brille) { m.material = m.material.clone(); m.material.emissive = new THREE.Color(typeof d.brille === 'string' ? d.brille : '#ffffff'); m.material.emissiveMap = m.material.map; m.material.emissiveIntensity = 1.4; } });
+      noel.groupe.add(pivot); } }));
+  return noel.charge;
+}
+function montrerBoule() {
+  if (noel.boule) { noel.boule.visible = ecran === 'noel' && !noel.fait; return; }
+  if (noel.bouleCharge) return; noel.bouleCharge = true;
+  charger('noel/boule').then((g) => { const o = g.scene; const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3()); o.scale.multiplyScalar(0.55 / t.y);
+    o.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
+    const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(-7.2, -0.32, 3.4); o.traverse((m) => { if (m.isMesh) m.castShadow = true; });
+    noel.boule = pivot; pivot.visible = ecran === 'noel' && !noel.fait; scene.add(pivot); });
+}
+let noelActif = false;
+function cacherNoel() { if (noel.groupe) noel.groupe.visible = false; if (noel.boule) noel.boule.visible = false; noel.fait = false; noelActif = false; appliquerStyle(styleActif); }
+async function ouvrirBoule() {
+  if (noel.fait) return; noel.fait = true; confettis();
+  if (noel.boule) noel.boule.visible = false;
+  dessiner(); await chargerNoel();
+  noelActif = true; noel.dedans = false; appliquerStyle(styleActif); montrer('exterieur', true); viser('noelDehors');
+  noel.groupe.visible = true; noel.pops = noel.groupe.children.map((p, i) => ({ p, t: -i * 0.07 })); for (const p of noel.groupe.children) p.scale.setScalar(0.001);
+  dessiner();
+}
+function avancerNoel(dt) {
+  if (noel.boule && noel.boule.visible) { noel.boule.rotation.y += dt * 0.8; noel.boule.position.y = -0.32 + 0.06 + Math.sin(performance.now() / 400) * 0.05; }
+  if (!noel.pops.length) return;
+  for (const q of noel.pops) { q.t += dt; const k = Math.min(1, Math.max(0, q.t / 0.5)); const e = k < 1 ? 1 - Math.pow(1 - k, 3) * Math.cos(k * 6) : 1; q.p.scale.setScalar(Math.max(0.001, e)); }
+  noel.pops = noel.pops.filter((q) => q.t < 0.5);
+}
+// confettis : petite animation sur un canvas posé au-dessus de la scène
+function confettis() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const c = document.createElement('canvas'); c.className = 'confettis'; document.body.appendChild(c); const x = c.getContext('2d');
+  const W = c.width = innerWidth * devicePixelRatio, H = c.height = innerHeight * devicePixelRatio;
+  const COUL = ['#ee3f81', '#f68f7c', '#7bae8a', '#f4c542', '#d6382f', '#ffffff', '#2f8f4e'];
+  const P = Array.from({ length: 180 }, () => ({ x: W / 2, y: H * 0.45, vx: (Math.random() - 0.5) * W * 0.035, vy: -Math.random() * H * 0.03 - H * 0.008, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4, w: (6 + Math.random() * 6) * devicePixelRatio, h: (3 + Math.random() * 4) * devicePixelRatio, c: COUL[(Math.random() * COUL.length) | 0] }));
+  const t0 = performance.now();
+  (function pas() { const t = (performance.now() - t0) / 1000; x.clearRect(0, 0, W, H);
+    for (const p of P) { p.vy += H * 0.0009; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr; x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.globalAlpha = Math.max(0, 1 - Math.max(0, t - 2)); x.fillStyle = p.c; x.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); x.restore(); }
+    if (t < 3) requestAnimationFrame(pas); else c.remove(); })();
+}
+// toucher la boule dans la scène
+const rayon = new THREE.Raycaster(), souris = new THREE.Vector2();
+canvas.addEventListener('pointerup', (ev) => {
+  if (ecran !== 'noel' || noel.fait || !noel.boule) return;
+  souris.set((ev.clientX / innerWidth) * 2 - 1, -(ev.clientY / innerHeight) * 2 + 1); rayon.setFromCamera(souris, camera);
+  if (rayon.intersectObject(noel.boule, true).length) ouvrirBoule();
+});
 
 // ---------- vues de la maison ----------
 let vue = null;
@@ -413,9 +497,17 @@ const ECRANS = {
     vue: 'exterieur', plan: 'aventures', etape: 'Étape 4 sur 4 · Votre aventure',
     intitule: 'La famille est installée. Place à la vie !',
     contenu: () => AVENTURES.map(([id, t, s, tag, c]) => `<button type="button" class="choix aventure" data-id="${id}" aria-pressed="${etat.aventure === id}"><div><span class="tag" style="background:${c}">${tag}</span><b>${t}</b><span>${s}</span></div></button>`).join('')
-      + (etat.aventure ? `<p class="message">Les aventures animées arrivent dans la prochaine version. Votre choix est noté.</p>` : `<p class="sous">Environ 2 minutes par aventure.</p>`),
-    clic: (id) => { etat.aventure = id; },
-    suite: () => 'Voir ma maison', pret: () => !!etat.aventure,
+      + (etat.aventure && etat.aventure !== 'noel' ? `<p class="message">Cette aventure arrive dans la prochaine version. Votre choix est noté.</p>` : `<p class="sous">Environ 2 minutes par aventure.</p>`),
+    clic: (id) => { etat.aventure = id; if (id === 'noel') { chargerNoel(); montrerBoule(); } },
+    suite: () => etat.aventure === 'noel' ? 'Commencer l’aventure' : 'Voir ma maison', pret: () => !!etat.aventure,
+  },
+  noel: {
+    vue: 'exterieur', plan: 'noel', etape: 'Aventure · La bombe de Noël',
+    intitule: () => !noel.fait ? 'Vous avez trouvé une boule de Noël ! Touchez-la pour décorer votre maison.' : noel.dedans ? 'Le réveillon est prêt !' : 'Joyeux Noël chez vous !',
+    contenu: () => !noel.fait ? `<p class="sous">La boule brille dans le jardin. Touchez-la, ou utilisez le bouton.</p>`
+      : noel.dedans ? `<p class="titre-panneau">Sapin, cadeaux et table de fête</p><p class="sous">Faites tourner la maison pour tout voir.</p>`
+      : `<p class="titre-panneau">Guirlandes, sapins enneigés et traîneau</p><p class="sous">La Clever’hom s’est habillée pour les fêtes. Entrez voir le salon !</p>`,
+    suite: () => !noel.fait ? 'Ouvrir la boule de Noël' : noel.dedans ? 'Voir ma maison' : 'Entrer dans la maison', pret: () => true,
   },
   fiche: {
     vue: 'exterieur', plan: 'fiche', etape: 'Partie terminée', pastille: '4 sur 4',
@@ -436,12 +528,15 @@ const ECRANS = {
 let ecran = 'accueil';
 function aller(nom) {
   if (document.body.dataset.rituel) rituel(null);
+  if (noel.fait && nom !== 'noel' && nom !== 'fiche') cacherNoel();
+  if (nom === 'fiche' && noel.groupe) for (const p of noel.groupe.children) if (p.userData.facade) p.visible = true;
   ecran = nom; document.body.dataset.ecran = nom;
+  if (nom === 'noel') montrerBoule(); else if (noel.boule) noel.boule.visible = false;
   const e = ECRANS[nom];
   $('question').hidden = $('panneau').hidden = !e; $('bulle').hidden = true;
   if (!e) { montrer('exterieur'); planter(etat.arbre); viser('accueil'); controls.autoRotate = true; return; }
   controls.autoRotate = false;
-  montrer(e.vue, e.famille !== false); viser(e.plan);
+  if (nom === 'noel' && noel.fait) vueNoel(noel.dedans); else { montrer(e.vue, e.famille !== false); viser(e.plan); }
   if (nom === 'arbre') { motte.visible = true; chargerMotte(); }
   dessiner();
 }
@@ -493,9 +588,11 @@ $('rituel-famille').addEventListener('click', () => { if (croissance) { croissan
 $('suite').addEventListener('click', () => {
   if (ecran === 'fiche') { if (etat.envoye) { location.reload(); return; } etat.envoye = true; dessiner(); return; }
   if (ecran === 'arbre') { ceremonie(); return; }
+  if (ecran === 'aventures' && etat.aventure === 'noel') { aller('noel'); return; }
+  if (ecran === 'noel') { if (!noel.fait) { ouvrirBoule(); return; } if (!noel.dedans) { vueNoel(true); dessiner(); return; } aller('fiche'); return; }
   aller(ORDRE[ORDRE.indexOf(ecran) + 1]);
 });
-$('retour').addEventListener('click', () => aller(ORDRE[Math.max(0, ORDRE.indexOf(ecran) - 1)]));
+$('retour').addEventListener('click', () => aller(ecran === 'noel' ? 'aventures' : ecran === 'fiche' && noel.fait ? 'noel' : ORDRE[Math.max(0, ORDRE.indexOf(ecran) - 1)]));
 $('jouer').addEventListener('click', () => { aller('arbre'); if (!etat.introVue) { etat.introVue = true; rituel('intro'); } });
 
 // ---------- démarrage ----------
@@ -528,13 +625,15 @@ let images = 0, t0 = performance.now();
 const horloge = new THREE.Clock(); const tmp = new THREE.Vector3();
 function image(dt) {
   for (const mx of mixers) mx.update(dt);
-  avancerTrajet(dt); avancerCroissance(dt); controls.update(); renderer.render(scene, camera);
+  avancerTrajet(dt); avancerCroissance(dt); avancerNoel(dt); controls.update(); renderer.render(scene, camera);
   const b = ECRANS[ecran]?.bulle; const bulle = $('bulle');
   if (b && !trajet) { tmp.set(...b.p).project(camera); bulle.hidden = tmp.z > 1; bulle.textContent = b.t; bulle.style.left = ((tmp.x + 1) / 2) * innerWidth + 'px'; bulle.style.top = ((1 - tmp.y) / 2) * innerHeight + 'px'; }
   else bulle.hidden = true;
 }
 window.__image = (dt = 0.1) => { if (trajet) trajet.t = 1; avancerTrajet(0); image(dt); };
 window.__cadrer = (pos, cible, fov = 40) => { PLANS.test = { pos, cible, fov }; viser('test', true); };
+window.__noelDedans = () => { vueNoel(true); dessiner(); if (trajet) { trajet.t = 1; avancerTrajet(0); } };
+window.__noel = async () => { await ouvrirBoule(); noel.pops.forEach((q) => { q.t = 1; }); avancerNoel(0); if (trajet) { trajet.t = 1; avancerTrajet(0); } };
 window.__aller = (n) => { aller(n); if (trajet) { trajet.t = 1; avancerTrajet(0); } };
 window.__rituel = async (n, t = 1) => { if (n === 'plaque') { await ceremonie(); if (trajet) { trajet.t = 1; avancerTrajet(0); } if (croissance) { croissance.t = 0; avancerCroissance(2.6 * t); } } else rituel(n); };
 window.__famille = () => [...instances.entries()].map(([id, it]) => [id, it.avatar, it.obj.visible, it.obj.position.toArray().map((v) => +v.toFixed(2)), new THREE.Box3().setFromObject(it.obj).getSize(new THREE.Vector3()).toArray().map((v) => +v.toFixed(2))]);
