@@ -33,6 +33,13 @@
  ],
  "animal": [
   "chien",
+  "chien_labrador",
+  "chien_bergerallemand",
+  "chien_husky",
+  "chien_bordercollie",
+  "chien_beagle",
+  "chien_jackrussell",
+  "chien_corgi",
   "chat"
  ]
 }

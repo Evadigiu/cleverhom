@@ -81,13 +81,20 @@ const coques = {}; const decor = {}; const arbres = {};
 // emplacements (x, y, z, orientation) pour les personnes puis les animaux, dans chaque vue
 const PLACES = {
   exterieur: { gens: [[-4.3, -0.32, 3.55, -1.82], [-4.15, -0.32, 4.35, -1.42], [-4.75, -0.32, 2.95, -2.07], [-4.55, -0.32, 5.1, -1.3], [-4.95, -0.32, 2.2, -2.3], [-4.45, -0.32, 5.8, -1.2], [-5.2, -0.32, 4.6, -1.6], [-5.3, -0.32, 3.4, -1.9]],
-    betes: [[-5.0, -0.32, 4.15, 2.27], [-5.35, -0.32, 3.3, 1.9]] },
+    betes: [[-5.0, -0.32, 4.15, 2.27], [-4.95, -0.32, 3.15, 1.9], [-4.9, -0.32, 2.0, 2.0], [-4.8, -0.32, 5.35, 2.5], [-4.65, -0.32, 6.25, 2.6], [-4.7, -0.32, 1.2, 1.8]] },
   coupe: { gens: [[5.0, 0, 2.0, 2.36], [2.9, 0, 2.55, -1.88], [3.7, 0, 1.3, 3.0], [1.9, 0, 3.2, -1.0], [4.5, 0, 3.1, 2.8], [2.2, 0, 0.9, 0.5], [0.9, 0, 1.9, 1.2], [6.6, 0, 3.2, 2.6]],
-    betes: [[1.4, 0, 3.6, 0.6], [2.6, 0, 4.1, 1.5]] },
+    betes: [[1.4, 0, 3.6, 0.6], [2.6, 0, 4.1, 1.5], [0.9, 0, 2.6, 1.0], [4.0, 0, 2.4, 2.4], [2.0, 0, 1.6, 0.2], [5.5, 0, 1.5, 3.0]] },
   etage: { gens: [[1.4, 2.9, 3.9, 0.5], [3.55, 2.9, 1.3, -1.57], [4.1, 2.9, 3.25, -2.2], [2.5, 2.9, 4.7, 0.8], [3.0, 2.9, 0.5, -1.2], [4.6, 2.9, 3.4, -2.6], [0.8, 2.9, 3.0, 0.3], [2.0, 2.9, 2.2, 0]],
-    betes: [[2.2, 2.9, 3.4, 0], [0.9, 2.9, 4.6, 0]] },
+    betes: [[2.2, 2.9, 3.4, 0], [0.9, 2.9, 4.6, 0], [1.2, 2.9, 1.0, 0], [2.8, 2.9, 1.0, 0], [0.6, 2.9, 3.4, 0], [2.6, 2.9, 4.4, 0]] },
 };
-const ANIMAUX = { chien: { h: 0.62, r: 0 }, chat: { h: 0.3, r: 0 } };
+// hauteur réelle et correction d'orientation (référence : le golden retriever)
+const ANIMAUX = {
+  chien: { h: 0.62, r: 0, nom: 'Golden retriever' }, chien_labrador: { h: 0.62, r: Math.PI, nom: 'Labrador' },
+  chien_bergerallemand: { h: 0.72, r: Math.PI / 2, nom: 'Berger allemand' }, chien_husky: { h: 0.64, r: -Math.PI / 2, nom: 'Husky' },
+  chien_bordercollie: { h: 0.56, r: Math.PI, nom: 'Border collie' }, chien_beagle: { h: 0.46, r: Math.PI, nom: 'Beagle' },
+  chien_jackrussell: { h: 0.36, r: Math.PI, nom: 'Jack russell' }, chien_corgi: { h: 0.34, r: -Math.PI / 2, nom: 'Corgi' },
+  chat: { h: 0.3, r: Math.PI, nom: 'Chat' },
+};
 const modeles = {}; // avatar -> gltf (promesse)
 const instances = new Map(); // id du membre -> { avatar, obj, mixer }
 const mixers = new Set();
@@ -163,11 +170,11 @@ const VALEURS = [['transmettre', 'Transmettre', 'pommier'], ['retrouver', 'Se re
 let CATALOGUE = { adulte: [], senior: [], enfant: [], animal: ['chien', 'chat'] };
 const TYPES = [['adulte', 'Adulte'], ['enfant', 'Enfant'], ['senior', 'Senior'], ['animal', 'Animal']];
 const MAX_MEMBRES = 8;
-const nomAnimal = { chien: 'Chien', chat: 'Chat' };
+const nomAnimal = new Proxy({}, { get: (_, k) => ANIMAUX[k]?.nom || 'Animal' });
 const membreActif = () => etat.membres.find((m) => m.id === etat.membre) || etat.membres[0];
 function composition() {
   const n = (t) => etat.membres.filter((m) => m.type === t).length; const parts = [];
-  const a = n('adulte'), s = n('senior'), e = n('enfant'), c = etat.membres.filter((m) => m.avatar === 'chien').length, ch = etat.membres.filter((m) => m.avatar === 'chat').length;
+  const a = n('adulte'), s = n('senior'), e = n('enfant'), c = etat.membres.filter((m) => m.avatar.startsWith('chien')).length, ch = etat.membres.filter((m) => m.avatar === 'chat').length;
   if (a) parts.push(a + (a > 1 ? ' adultes' : ' adulte')); if (s) parts.push(s + (s > 1 ? ' seniors' : ' senior')); if (e) parts.push(e + (e > 1 ? ' enfants' : ' enfant'));
   if (c) parts.push(c + (c > 1 ? ' chiens' : ' chien')); if (ch) parts.push(ch + (ch > 1 ? ' chats' : ' chat'));
   return parts.join(', ') || '—';
@@ -351,6 +358,7 @@ function image(dt) {
 }
 window.__image = (dt = 0.1) => { if (trajet) trajet.t = 1; avancerTrajet(0); image(dt); };
 window.__aller = (n) => { aller(n); if (trajet) { trajet.t = 1; avancerTrajet(0); } };
+window.__famille = () => [...instances.entries()].map(([id, it]) => [id, it.avatar, it.obj.visible, it.obj.position.toArray().map((v) => +v.toFixed(2)), new THREE.Box3().setFromObject(it.obj).getSize(new THREE.Vector3()).toArray().map((v) => +v.toFixed(2))]);
 window.__etat = () => ({ pret: !!mesures.pret, complet: !!mesures.complet, mesures, triangles: renderer.info.render.triangles, etat });
 window.__choisir = (cle, val) => { etat[cle] = val; if (cle === 'arbre') return planter(val).then(dessiner); dessiner(); };
 if (!QS.has('capture')) renderer.setAnimationLoop(() => {
