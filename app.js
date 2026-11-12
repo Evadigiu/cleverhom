@@ -184,7 +184,7 @@ function avancerCroissance(dt) {
   if (croissance.t >= 1) croissance = null;
 }
 async function planter(id) {
-  motte.visible = !!id; if (id) chargerMotte();
+  motte.visible = !!id || ecran === 'arbre'; if (motte.visible) chargerMotte();
   if (!id) { for (const a of Object.values(arbres)) if (a.scene) a.scene.visible = false; return; }
   if (!arbres[id]) chargerArbre(id);
   const g = await arbres[id];
@@ -238,6 +238,8 @@ const ORDRE = ['accueil', 'arbre', 'famille', 'salon', 'etage', 'aventures', 'fi
 const ECRANS = {
   arbre: {
     vue: 'exterieur', famille: false, plan: 'arbre', etape: 'Étape 1 sur 4 · Votre arbre', pastille: 'Pousse en Alsace',
+    // avant le choix : la terre est déjà retournée et une bulle montre où l'arbre sera planté
+    get bulle() { return etat.arbre ? null : { p: [terre.position.x, 0.25, terre.position.z], t: 'Votre arbre ici' }; },
     intitule: 'Avant d’entrer, qu’est-ce qui compte le plus pour vous ?',
     puces: () => VALEURS.map(([id, l]) => ({ id, l, on: etat.valeur === id })),
     puce: (id) => { etat.valeur = id; choisirArbre(VALEURS.find((v) => v[0] === id)[2]); },
@@ -328,6 +330,7 @@ function aller(nom) {
   if (!e) { montrer('exterieur'); planter(etat.arbre); viser('accueil'); controls.autoRotate = true; return; }
   controls.autoRotate = false;
   montrer(e.vue, e.famille !== false); viser(e.plan);
+  if (nom === 'arbre') { motte.visible = true; chargerMotte(); }
   dessiner();
 }
 function dessiner() {
