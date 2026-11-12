@@ -145,7 +145,7 @@ const DECO = {
       { f: 'fauteuil', haut: 0.8, x: 1.55, y: 0.04, z: 3.05, r: Math.PI },         // fauteuil bois et tissu blanc (Denague) au bout de la table basse, tourné vers elle
       { f: 'tablebasse', long: 1.05, x: 1.62, y: 0.04, z: 4.3, r: Math.PI / 2 },   // table basse ovale bois et bleu (jufernandez) à la place des tables noires
       { f: 'table', long: 1.23, x: 2.05, y: 0.0, z: 1.55, r: 0 },                 // table et chaises (Table & Chair Sets, everycraft) sous la suspension
-      { f: 'tulipes', haut: 0.38, x: 1.78, y: 0.745, z: 1.8, r: 0.4 },            // bouquet de tulipes (alban) sur la table, à côté de la suspension
+      { f: 'tulipes', haut: 0.38, x: 2.05, y: 0.745, z: 1.55, r: 0.4 },           // bouquet de tulipes (alban) au centre de la table
     ],
   },
 };
