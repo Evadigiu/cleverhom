@@ -538,7 +538,7 @@ window.__aller = (n) => { aller(n); if (trajet) { trajet.t = 1; avancerTrajet(0)
 window.__rituel = async (n, t = 1) => { if (n === 'plaque') { await ceremonie(); if (trajet) { trajet.t = 1; avancerTrajet(0); } if (croissance) { croissance.t = 0; avancerCroissance(2.6 * t); } } else rituel(n); };
 window.__famille = () => [...instances.entries()].map(([id, it]) => [id, it.avatar, it.obj.visible, it.obj.position.toArray().map((v) => +v.toFixed(2)), new THREE.Box3().setFromObject(it.obj).getSize(new THREE.Vector3()).toArray().map((v) => +v.toFixed(2))]);
 window.__etat = () => ({ pret: !!mesures.pret, complet: !!mesures.complet, mesures, triangles: renderer.info.render.triangles, etat });
-window.__choisir = (cle, val) => { etat[cle] = val; if (cle === 'arbre') return planter(val).then(dessiner); dessiner(); };
+window.__choisir = (cle, val) => { etat[cle] = val; if (cle === 'style') appliquerStyle(val); if (cle === 'arbre') return planter(val).then(dessiner); dessiner(); };
 if (!QS.has('capture')) renderer.setAnimationLoop(() => {
   image(Math.min(horloge.getDelta(), 0.1));
   images++; const t = performance.now();
