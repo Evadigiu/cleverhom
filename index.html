@@ -13,31 +13,45 @@
 } }
 </script>
 </head>
-<body>
+<body data-ecran="accueil">
 <canvas id="scene" aria-label="La maison Clever'hom en 3D. Faites glisser pour la faire tourner."></canvas>
 
-<header class="haut">
+<!-- accueil -->
+<header class="haut seulement-accueil">
   <div class="logos"><img src="assets/img/pomelo-web.png" alt="Pomelo"><span aria-hidden="true">×</span><img src="assets/img/cleverhom-web.png" alt="Maisons Clever'hom"></div>
   <h1>Prolongez votre visite Clever'hom <span class="surligne">avec Pomelo</span></h1>
   <p class="baseline"><span class="point" aria-hidden="true"></span>Le Bonheur, ici et maintenant !</p>
 </header>
-
-<div class="astuce" id="astuce">Faites glisser pour tourner autour de la maison</div>
-
-<section class="carte">
+<div class="astuce seulement-accueil" id="astuce">Faites glisser pour tourner autour de la maison</div>
+<section class="carte seulement-accueil">
   <div class="ligne">
     <div><p class="etiquette">Clever'parc de Wittelsheim</p><p class="nom">La Clever'hom</p></div>
-    <button class="vue" id="vue" type="button" disabled>Ouvrir la maison</button>
+    <span class="duree">≈ 10 min</span>
   </div>
-  <a class="jouer" href="#" id="jouer">Jouer</a>
+  <button class="jouer" id="jouer" type="button" disabled>Jouer</button>
   <p class="mentions">Visuels et aménagements non contractuels · <a href="credits.html">Crédits</a></p>
+</section>
+
+<!-- écrans du parcours : bandeau en haut, panneau en bas -->
+<section class="question" id="question" hidden>
+  <div class="ligne">
+    <button class="retour" id="retour" type="button" aria-label="Revenir à l'étape précédente">‹</button>
+    <p class="etiquette" id="etape"></p>
+    <span class="pastille" id="pastille" hidden></span>
+  </div>
+  <p class="intitule" id="intitule"></p>
+  <div class="puces" id="puces"></div>
+</section>
+<div class="bulle" id="bulle" hidden></div>
+<section class="panneau" id="panneau" hidden>
+  <div id="contenu"></div>
+  <button class="suite" id="suite" type="button"></button>
 </section>
 
 <div class="chargement" id="chargement" role="status" aria-live="polite">
   <div class="barre"><div id="barre"></div></div>
   <p id="texte">Chargement de votre maison…</p>
 </div>
-
 <pre class="mesures" id="mesures" hidden></pre>
 
 <script type="module" src="app.js"></script>
