@@ -134,17 +134,17 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 body[data-rituel] .question, body[data-rituel] .panneau, body[data-rituel] .bulle { opacity: 0; pointer-events: none; }
 .question, .panneau { transition: opacity 0.6s ease; }
 .rituel { position: fixed; inset: 0; z-index: 10; display: flex; align-items: flex-end; justify-content: center; padding: 0 24px max(28px, env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, rgba(253, 236, 227, 0) 0%, rgba(253, 236, 227, 0.55) 38%, rgba(253, 236, 227, 0.96) 62%); animation: voile 1.2s ease both; }
-.rituel.plaque { background: linear-gradient(180deg, rgba(253, 236, 227, 0) 0%, rgba(253, 236, 227, 0) 45%, rgba(253, 236, 227, 0.95) 72%); animation-delay: 2.4s; }
+  background: linear-gradient(180deg, rgba(253, 236, 227, 0) 0%, rgba(253, 236, 227, 0.55) 38%, rgba(253, 236, 227, 0.96) 62%); animation: voile 0.6s ease both; }
+.rituel.plaque { background: linear-gradient(180deg, rgba(253, 236, 227, 0) 0%, rgba(253, 236, 227, 0) 45%, rgba(253, 236, 227, 0.95) 72%); animation-delay: 1.5s; }
 .rituel-texte { width: 100%; max-width: 380px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .rituel h2 { margin: 4px 0 10px; font-family: "Righteous", sans-serif; font-weight: 400; font-size: clamp(26px, 8vw, 34px); line-height: 1.08; text-transform: uppercase; letter-spacing: 0.04em; }
 .rituel h2::after { content: ""; display: block; width: 44px; height: 3px; border-radius: 2px; background: var(--sauge); margin: 14px auto 0; }
-.rituel .vers { margin: 0; font-size: 19px; line-height: 1.35; opacity: 0; transform: translateY(6px); animation: vers 1s ease forwards; animation-delay: calc(0.8s + var(--i) * 0.9s); }
+.rituel .vers { margin: 0; font-size: 19px; line-height: 1.35; opacity: 0; transform: translateY(6px); animation: vers 0.6s ease forwards; animation-delay: calc(0.4s + var(--i) * 0.35s); }
 .rituel .suite.vers { margin-top: 18px; }
-.rituel > .rituel-texte > .etiquette, .rituel h2 { opacity: 0; animation: vers 1s ease forwards 0.3s; }
-.rituel.plaque .etiquette { animation-delay: 2.4s; }
-.rituel.plaque h2 { animation-delay: 2.8s; }
-.rituel.plaque .vers { animation-delay: calc(3.5s + var(--i) * 0.8s); }
+.rituel > .rituel-texte > .etiquette, .rituel h2 { opacity: 0; animation: vers 0.6s ease forwards 0.1s; }
+.rituel.plaque .etiquette { animation-delay: 1.6s; }
+.rituel.plaque h2 { animation-delay: 1.8s; }
+.rituel.plaque .vers { animation-delay: calc(2.2s + var(--i) * 0.4s); }
 .rituel.tout, .rituel.tout * { animation-delay: 0s !important; animation-duration: 0.3s !important; }
 @keyframes voile { from { opacity: 0; } to { opacity: 1; } }
 @keyframes vers { to { opacity: 1; transform: none; } }

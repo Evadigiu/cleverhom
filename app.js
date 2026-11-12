@@ -367,7 +367,7 @@ function chargerArbre(id) {
 }
 let croissance = null; // { pivot, t } : l'arbre pousse pendant la plantation
 function avancerCroissance(dt) {
-  if (!croissance) return; croissance.t = Math.min(1, croissance.t + dt / 2.6);
+  if (!croissance) return; croissance.t = Math.min(1, croissance.t + dt / 2.0);
   const k = 1 - Math.pow(1 - croissance.t, 3); croissance.pivot.scale.setScalar(0.04 + 0.96 * k);
   if (croissance.t >= 1) croissance = null;
 }
