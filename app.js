@@ -1,5 +1,5 @@
 // Ma Maison en Jeu : le parcours du joueur dans la Clever'hom, en 3D sur téléphone.
-// Accueil → arbre → famille → salon → qui dort où → aventure → fiche pour le conseiller.
+// Accueil → arbre → famille → style de la maison → qui dort où → aventure → fiche pour le conseiller.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
@@ -133,6 +133,55 @@ function placerFamille() {
 const zone9 = new THREE.Mesh(new THREE.PlaneGeometry(3.24, 2.61), new THREE.MeshBasicMaterial({ color: '#f68f7c', transparent: true, opacity: 0.4, depthWrite: false }));
 zone9.rotation.x = -Math.PI / 2; zone9.position.set(5.96, 2.94, 1.355); zone9.visible = false; scene.add(zone9);
 
+// ---------- styles de décoration ----------
+// « Moderne et épuré » : la maison telle qu'elle est. « Chaleureux et coloré » : on cache certains meubles du modèle d'intérieur,
+// on pose à leur place des modèles des banques (chargés seulement à la demande) et les murs d'accent sauge passent en blanc.
+const DECO = {
+  chaleureux: {
+    cacher: /^(Material2_38$|Material2_8$|Stool_02_Wood_0|Flower-Vase|Phalaenopsis)/,
+    poser: [
+      { f: 'canape', long: 2.15, x: 0.62, y: 0.034, z: 4.08, r: Math.PI / 2 },    // canapé (Office Couch, jtressle) à la place de l'ancien, face à la table basse
+      { f: 'table', long: 1.23, x: 2.05, y: 0.0, z: 1.55, r: 0 },                 // table et chaises (Table & Chair Sets, everycraft) sous la suspension
+      { f: 'tulipes', haut: 0.38, x: 1.78, y: 0.745, z: 1.8, r: 0.4 },            // bouquet de tulipes (alban) sur la table, à côté de la suspension
+    ],
+  },
+};
+const decoPosee = {}; let styleActif = 'moderne';
+const SAUGE = [0xcf, 0xe2, 0xd2], BLANC = [0xf7, 0xf4, 0xef];
+const palettes = new Map(); // texture d'origine -> version où la couleur sauge est remplacée par du blanc
+function sansSauge(tex) {
+  if (palettes.has(tex)) return palettes.get(tex);
+  let out = null; const im = tex.image;
+  if (im && im.width && im.height <= 8) { // seulement les petites palettes de couleurs unies (murs), pas les vraies textures
+    const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height); let n = 0;
+    for (let i = 0; i < d.data.length; i += 4) if (Math.abs(d.data[i] - SAUGE[0]) + Math.abs(d.data[i + 1] - SAUGE[1]) + Math.abs(d.data[i + 2] - SAUGE[2]) < 24) { d.data[i] = BLANC[0]; d.data[i + 1] = BLANC[1]; d.data[i + 2] = BLANC[2]; n++; }
+    if (n) { x.putImageData(d, 0, 0); out = new THREE.CanvasTexture(c);
+      for (const k of ['flipY', 'colorSpace', 'wrapS', 'wrapT', 'magFilter', 'minFilter', 'channel', 'generateMipmaps']) out[k] = tex[k]; out.needsUpdate = true; }
+  }
+  palettes.set(tex, out); return out;
+}
+function mursBlancs(oui) {
+  for (const racine of [...Object.values(coques), ...Object.values(decor)]) racine.traverse((m) => { if (!m.isMesh) return;
+    for (const mat of Array.isArray(m.material) ? m.material : [m.material]) {
+      if (mat.userData.mapOrigine === undefined) { if (!mat.map) { mat.userData.mapOrigine = null; continue; } mat.userData.mapOrigine = mat.map; }
+      const o = mat.userData.mapOrigine; if (!o) continue; const b = sansSauge(o); if (!b) continue; mat.map = oui ? b : o; } });
+}
+async function appliquerStyle(nom) {
+  styleActif = nom; const D = DECO[nom];
+  if (decor.interieur) decor.interieur.traverse((m) => { if (m.isMesh) m.visible = !(D && D.cacher.test(m.name)); });
+  for (const [k, g] of Object.entries(decoPosee)) g.visible = k === nom;
+  mursBlancs(nom === 'chaleureux');
+  if (!D || decoPosee[nom]) return;
+  const groupe = new THREE.Group(); decoPosee[nom] = groupe; scene.add(groupe);
+  await Promise.all(D.poser.map(async (p) => { const g = await charger('deco/' + p.f); const o = g.scene;
+    const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3()); o.scale.multiplyScalar(p.haut ? p.haut / t.y : p.long / Math.max(t.x, t.z));
+    const pivot = new THREE.Group(); pivot.add(o); o.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3());
+    o.position.set(-c.x, -b.min.y, -c.z); pivot.position.set(p.x, p.y, p.z); pivot.rotation.y = p.r;
+    o.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); groupe.add(pivot); }));
+  groupe.visible = styleActif === nom;
+}
+
 // ---------- vues de la maison ----------
 let vue = null;
 const VUES = {
@@ -197,7 +246,7 @@ async function planter(id) {
 let numero = 0; const membre = (prenom, age, type, avatar) => ({ id: 'm' + (++numero), prenom, age, type, avatar, habitudes: [] });
 // on démarre avec le joueur seul (« Vous ») : aucune famille d'exemple ne doit finir dans la fiche du conseiller
 const moi = Object.assign(membre('', '', 'adulte', 'f07'), { moi: true });
-const etat = { valeur: null, arbre: null, membres: [moi], membre: moi.id, salon: [], piece: null, chambres: 3, aventure: null, prenom: '', contact: '', accord: false, envoye: false };
+const etat = { valeur: null, arbre: null, membres: [moi], membre: moi.id, style: null, piece: null, chambres: 3, aventure: null, prenom: '', contact: '', accord: false, envoye: false };
 
 const ARBRES = [
   { id: 'pommier', nom: 'Pommier', le: 'le pommier', couleur: '#d6382f', titre: 'Le pommier · ce qui se transmet', texte: "Planté par vous, cueilli par vos enfants, puis par les leurs. L'arbre des vergers alsaciens." },
@@ -238,7 +287,8 @@ const prenoms = () => { const l = etat.membres.filter((m) => m.type !== 'animal'
 const HABITUDES = [['teletravail', 'Télétravail', 'besoin d’un bureau'], ['cuisine', 'Cuisiner', 'cuisine ouverte'], ['sport', 'Sport', 'du rangement'], ['jardin', 'Jardiner', 'un potager'], ['jeux', 'Jouer', 'un coin à soi'], ['amis', 'Recevoir', 'une chambre d’amis']];
 const HABITUDES_ENFANT = ['jeux', 'sport', 'jardin', 'cuisine'];
 const HABITUDES_CHIEN = [['balade', 'Balades', 'accès jardin'], ['dodo', 'Sieste', 'un panier au calme']];
-const SALON = [['famille', 'Se poser en famille', 'canapé, plaid, série'], ['amis', 'Recevoir les amis', 'apéro et grandes tablées'], ['enfants', 'Jouer avec les enfants', 'tapis, jeux, cabanes'], ['lire', 'Lire au calme', 'un fauteuil, une lampe']];
+// deux scénographies pour toute la maison ; la cuisine et les salles d'eau ne changent pas
+const STYLES = [['moderne', 'Moderne et épuré', 'Lignes nettes, tons clairs, peu d’objets'], ['chaleureux', 'Chaleureux et coloré', 'Couleurs vives, fleurs, mobilier accueillant']];
 const PIECE = [['bureau', 'Bureau', 'pour télétravailler'], ['amis', "Chambre d'amis", 'pour recevoir'], ['jeux', 'Salle de jeux', 'pour les enfants'], ['sport', 'Salle de sport', 'pour bouger'], ['bebe', 'Chambre de bébé', 'pour la suite']];
 const AVENTURES = [
   ['noel', 'La bombe de Noël', 'Une boule éclate et toute la maison s’habille de lumières et de neige.', 'De saison', '#ee3f81'],
@@ -266,7 +316,7 @@ function visagesHtml(m) {
       : `<button type="button" class="portrait" data-avatar="${V[x] ? V[x][iTeint] : x}" aria-pressed="${m.avatar === x || base === x}" aria-label="Personnage ${x}"><img src="assets/avatars/${V[x] ? V[x][iTeint] : x}.webp" alt="" width="64" height="64" loading="lazy"></button>`).join('')}</div>`
     + (base ? `<div class="teints"><span>Teint</span>${V[base].map((v, i) => `<button type="button" class="teint" data-avatar="${v}" aria-pressed="${i === iTeint}" aria-label="Teint ${CATALOGUE.teints.noms[i].toLowerCase()}" style="background:${CATALOGUE.teints.couleurs[i]}"></button>`).join('')}</div>` : '');
 }
-const ORDRE = ['accueil', 'arbre', 'famille', 'salon', 'etage', 'aventures', 'fiche'];
+const ORDRE = ['accueil', 'arbre', 'famille', 'style', 'etage', 'aventures', 'fiche'];
 const ECRANS = {
   arbre: {
     vue: 'exterieur', famille: false, plan: 'arbre', etape: 'Étape 1 sur 4 · Votre arbre', pastille: 'Pousse en Alsace',
@@ -314,12 +364,13 @@ const ECRANS = {
     },
     suite: () => moi.prenom.trim() ? 'Entrer dans la maison' : 'Indiquez votre prénom', pret: () => !!moi.prenom.trim(),
   },
-  salon: {
-    vue: 'coupe', plan: 'salon', etape: 'Étape 3 sur 4 · Le salon', bulle: { p: [1.5, 1.4, 4.3], t: 'Le salon' },
-    intitule: 'Le soir, chez vous, ça ressemble à quoi ?',
-    contenu: () => `<p class="titre-panneau">Ce salon, c'est surtout pour… <span class="sous">plusieurs choix</span></p><div class="grille">${SALON.map(([id, l, s]) => choix(id, l, s, etat.salon.includes(id))).join('')}</div>`,
-    clic: (id) => { const i = etat.salon.indexOf(id); if (i >= 0) etat.salon.splice(i, 1); else etat.salon.push(id); },
-    suite: () => 'Monter à l’étage', pret: () => true,
+  style: {
+    vue: 'coupe', plan: 'salon', etape: 'Étape 3 sur 4 · Votre intérieur',
+    intitule: 'À quoi ressemblera votre Clever’hom ?',
+    contenu: () => `<div class="grille">${STYLES.map(([id, l, sous]) => choix(id, l, sous, etat.style === id)).join('')}</div>`
+      + (etat.style ? '' : `<p class="sous">Touchez un style : toute la maison s’habille en direct.</p>`),
+    clic: (id) => { etat.style = id; appliquerStyle(id); },
+    suite: () => etat.style ? 'Monter à l’étage' : 'Choisissez un style', pret: () => !!etat.style,
   },
   etage: {
     vue: 'etage', plan: 'etage', etape: 'Étape 3 sur 4 · Qui dort où ?', bulle: { p: [5.96, 3.1, 1.35], t: '9 m² · à vous de choisir' },
@@ -343,7 +394,7 @@ const ECRANS = {
     contenu: () => {
       const lignes = [['Votre arbre', (ARBRES.find((x) => x.id === etat.arbre)?.nom || '—') + (etat.valeur ? ' · ' + libelle(VALEURS, etat.valeur).toLowerCase() : '')], ['La famille', composition()],
         ['Habitudes', [...new Set(etat.membres.flatMap((m) => m.habitudes))].map((h) => libelle(HABITUDES, h)).join(', ') || '—'],
-        ['Le salon', etat.salon.map((s) => libelle(SALON, s)).join(', ') || '—'], ['La pièce de 9 m²', libelle(PIECE, etat.piece)], ['Chambres souhaitées', etat.chambres]];
+        ['Le style', libelle(STYLES, etat.style)], ['La pièce de 9 m²', libelle(PIECE, etat.piece)], ['Chambres souhaitées', etat.chambres]];
       return `<div>${lignes.map(([a, b]) => `<div class="ligne-recap"><span>${a}</span><b>${esc(b)}</b></div>`).join('')}</div>`
         + (etat.envoye ? `<p class="message">C'est noté ! Dans cette version de démonstration, la fiche n'est pas encore transmise au conseiller.</p>` :
         `<div class="champs"><div class="champ"><label for="prenom">Prénom</label><input id="prenom" autocomplete="given-name" value="${esc(etat.prenom || moi.prenom)}"></div><div class="champ"><label for="contact">Téléphone ou e-mail</label><input id="contact" autocomplete="tel" value="${esc(etat.contact)}"></div></div>
@@ -436,7 +487,7 @@ async function demarrer() {
   const [inte, coupe, et, etage] = await Promise.all(['interieur', 'maison-coupe', 'maison-etage', 'etage'].map((n) => charger(n)));
   decor.interieur = inte.scene; decor.etage = etage.scene; coques.coupe = coupe.scene; coques.etage = et.scene;
   scene.add(inte.scene, etage.scene, coupe.scene, et.scene);
-  montrer(vue, ECRANS[ecran]?.famille !== false);
+  montrer(vue, ECRANS[ecran]?.famille !== false); if (etat.style) appliquerStyle(etat.style);
   if (!arbres.pommier) chargerArbre('pommier');
   mesures.complet = (performance.now() - DEBUT) / 1000; mesures.tout = total;
 }
