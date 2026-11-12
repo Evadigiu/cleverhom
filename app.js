@@ -138,7 +138,11 @@ function montrer(nom, fam = true) {
   zone9.visible = nom === 'etage';
   placerFamille();
 }
+// terre au pied de l'arbre, visible seulement une fois l'arbre planté
+const terre = new THREE.Mesh(new THREE.CircleGeometry(0.75, 40), new THREE.MeshStandardMaterial({ color: '#6b4b33', roughness: 1 }));
+terre.rotation.x = -Math.PI / 2; terre.position.set(-5.6, -0.295, 0.9); terre.receiveShadow = true; terre.visible = false; scene.add(terre);
 async function planter(id) {
+  terre.visible = !!id;
   if (!id) { for (const a of Object.values(arbres)) if (a.scene) a.scene.visible = false; return; }
   if (!arbres[id]) arbres[id] = charger('arbres/' + id).then((g) => { scene.add(g.scene); arbres[id] = g; return g; });
   const g = await arbres[id];
