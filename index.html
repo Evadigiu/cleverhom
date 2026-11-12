@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ma Maison en Jeu</title>
 <meta name="description" content="Prolongez votre visite Clever'hom avec Pomelo : votre future maison, en 3D, sur votre téléphone.">
-<link rel="stylesheet" href="style.css?v=202611121042">
+<link rel="stylesheet" href="style.css?v=202611121240">
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
@@ -18,7 +18,7 @@
 
 <!-- accueil -->
 <header class="haut seulement-accueil">
-  <div class="logos"><img src="assets/img/pomelo-web.png" alt="Pomelo"><span aria-hidden="true">×</span><img src="assets/img/cleverhom-web.png" alt="Maisons Clever'hom"></div>
+  <div class="logos"><img src="assets/img/cleverhom-web.png" alt="Maisons Clever'hom"></div>
   <h1>Prolongez votre visite Clever'hom <span class="surligne">avec Pomelo</span></h1>
   <p class="baseline"><span class="point" aria-hidden="true"></span>Le Bonheur, ici et maintenant !</p>
 </header>
@@ -49,11 +49,12 @@
 </section>
 
 <div class="chargement" id="chargement" role="status" aria-live="polite">
+  <img class="logo-ouverture" src="assets/img/cleverhom-web.png" alt="Maisons Clever'hom">
   <div class="barre"><div id="barre"></div></div>
-  <p id="texte">Chargement de votre maison…</p>
+  <p id="texte" class="visuellement-cache">Chargement de votre maison…</p>
 </div>
 <pre class="mesures" id="mesures" hidden></pre>
 
-<script type="module" src="app.js?v=202611121042"></script>
+<script type="module" src="app.js?v=202611121240"></script>
 </body>
 </html>

@@ -335,7 +335,9 @@ async function demarrer() {
   vue = 'exterieur'; await synchroniserFamille();
   montrer('exterieur'); viser('accueil', true);
   mesures.pret = (performance.now() - DEBUT) / 1000; mesures.premier = total;
-  $('chargement').classList.add('fini'); $('jouer').disabled = false;
+  // écran d'ouverture : le logo reste au moins 2,4 s avant de s'effacer en fondu
+  setTimeout(() => $('chargement').classList.add('fini'), Math.max(0, 2400 - (performance.now() - DEBUT)));
+  $('jouer').disabled = false;
   // en arrière-plan : l'intérieur, la coupe, l'étage et le pommier
   const [inte, coupe, et, etage] = await Promise.all(['interieur', 'maison-coupe', 'maison-etage', 'etage'].map((n) => charger(n)));
   decor.interieur = inte.scene; decor.etage = etage.scene; coques.coupe = coupe.scene; coques.etage = et.scene;
@@ -370,4 +372,4 @@ if (!QS.has('capture')) renderer.setAnimationLoop(() => {
       'tout en : ' + (mesures.complet ? mesures.complet.toFixed(1) + ' s (' + (mesures.tout / 1e6).toFixed(1) + ' Mo)' : '…')].join('\n'); }
 });
 
-demarrer().catch((e) => { $('texte').textContent = 'Le chargement a échoué. Rechargez la page.'; console.error(e); });
+demarrer().catch((e) => { const t = $('texte'); t.textContent = 'Le chargement a échoué. Rechargez la page.'; t.classList.remove('visuellement-cache'); console.error(e); });
