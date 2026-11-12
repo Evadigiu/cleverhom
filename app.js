@@ -46,6 +46,7 @@ addEventListener('resize', taille); taille();
 const PLANS = {
   accueil: { pos: [-22, 8, -6], cible: [1.0, 1.4, 3.2], fov: 46 },
   arbre: { pos: [-10.4, 6.0, -3.4], cible: [-5.6, 0.6, 1.3], fov: 50 },
+  plantation: { pos: [-12.6, 3.0, -4.7], cible: [-5.6, 0.5, 0.9], fov: 46 },
   famille: { pos: [-14.3, 2.3, 3.7], cible: [-4.6, -0.35, 3.7], fov: 44 },
   salon: { pos: [5.5, 10, -1.5], cible: [1.4, -0.9, 4.1], fov: 38 },
   etage: { pos: [-19, 31, -2], cible: [2.6, 1.2, 2.2], fov: 26 },
@@ -161,10 +162,22 @@ function centrerTronc(racine, couronne = false) {
   else for (let i = 0; i < pts.length; i += 3) if (pts[i + 1] < ymin + 0.35) { sx += pts[i]; sz += pts[i + 2]; n++; }
   if (n) { racine.position.x += terre.position.x - sx / n; racine.position.z += terre.position.z - sz / n; }
 }
+// chaque arbre est accroché à un pivot posé au centre de la terre : on peut le faire pousser depuis son pied
+function chargerArbre(id) {
+  return (arbres[id] = charger('arbres/' + id).then((g) => { centrerTronc(g.scene, PAR_COURONNE.has(id));
+    const pivot = new THREE.Group(); pivot.position.set(terre.position.x, terre.position.y, terre.position.z); g.scene.position.sub(pivot.position);
+    pivot.add(g.scene); scene.add(pivot); g.pivot = pivot; g.scene.visible = etat.arbre === id; arbres[id] = g; return g; }));
+}
+let croissance = null; // { pivot, t } : l'arbre pousse pendant la plantation
+function avancerCroissance(dt) {
+  if (!croissance) return; croissance.t = Math.min(1, croissance.t + dt / 2.6);
+  const k = 1 - Math.pow(1 - croissance.t, 3); croissance.pivot.scale.setScalar(0.04 + 0.96 * k);
+  if (croissance.t >= 1) croissance = null;
+}
 async function planter(id) {
   terre.visible = !!id;
   if (!id) { for (const a of Object.values(arbres)) if (a.scene) a.scene.visible = false; return; }
-  if (!arbres[id]) arbres[id] = charger('arbres/' + id).then((g) => { centrerTronc(g.scene, PAR_COURONNE.has(id)); scene.add(g.scene); arbres[id] = g; return g; });
+  if (!arbres[id]) chargerArbre(id);
   const g = await arbres[id];
   for (const [k, a] of Object.entries(arbres)) if (a.scene) a.scene.visible = k === id && etat.arbre === id;
 }
@@ -299,6 +312,7 @@ const ECRANS = {
 
 let ecran = 'accueil';
 function aller(nom) {
+  if (document.body.dataset.rituel) rituel(null);
   ecran = nom; document.body.dataset.ecran = nom;
   const e = ECRANS[nom];
   $('question').hidden = $('panneau').hidden = !e; $('bulle').hidden = true;
@@ -333,12 +347,29 @@ $('contenu').addEventListener('input', (ev) => {
   $('suite').disabled = !ECRANS[ecran].pret();
 });
 $('contenu').addEventListener('toggle', (ev) => { if (ev.target.matches('details.habitudes')) etat.habitudesOuvert = ev.target.open; }, true);
+// ---------- le moment de l'arbre ----------
+const VOEUX = { transmettre: 'Pour tout ce que vous transmettrez.', retrouver: 'Pour tous les moments où vous vous retrouverez.', recevoir: 'Pour tous ceux que vous recevrez.', ressourcer: 'Pour les jours où vous viendrez vous ressourcer.' };
+function rituel(nom) { $('rituel-intro').classList.remove('tout'); $('rituel-plaque').classList.remove('tout'); document.body.dataset.rituel = nom || ''; if (!nom) delete document.body.dataset.rituel; $('rituel-intro').hidden = nom !== 'intro'; $('rituel-plaque').hidden = nom !== 'plaque'; }
+async function ceremonie() {
+  const a = ARBRES.find((x) => x.id === etat.arbre); const g = await arbres[a.id];
+  $('plaque-date').textContent = 'Planté le ' + new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' · Wittelsheim';
+  $('plaque-titre').textContent = 'Votre ' + a.nom.toLowerCase();
+  $('plaque-voeu').textContent = VOEUX[etat.valeur] || a.texte;
+  rituel('plaque'); viser('plantation');
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) { g.pivot.scale.setScalar(0.04); croissance = { pivot: g.pivot, t: 0 }; }
+  $('rituel-famille').focus({ preventScroll: true });
+}
+$('rituel-choisir').addEventListener('click', () => rituel(null));
+// un toucher sur le voile fait apparaître tout le texte d'un coup, pour qui ne veut pas attendre
+for (const r of ['rituel-intro', 'rituel-plaque']) $(r).addEventListener('click', (ev) => { if (!ev.target.closest('button')) $(r).classList.add('tout'); });
+$('rituel-famille').addEventListener('click', () => { if (croissance) { croissance.t = 1; avancerCroissance(0); } rituel(null); aller('famille'); });
 $('suite').addEventListener('click', () => {
   if (ecran === 'fiche') { if (etat.envoye) { location.reload(); return; } etat.envoye = true; dessiner(); return; }
+  if (ecran === 'arbre') { ceremonie(); return; }
   aller(ORDRE[ORDRE.indexOf(ecran) + 1]);
 });
 $('retour').addEventListener('click', () => aller(ORDRE[Math.max(0, ORDRE.indexOf(ecran) - 1)]));
-$('jouer').addEventListener('click', () => aller('arbre'));
+$('jouer').addEventListener('click', () => { aller('arbre'); if (!etat.introVue) { etat.introVue = true; rituel('intro'); } });
 
 // ---------- démarrage ----------
 const mesures = {};
@@ -359,7 +390,7 @@ async function demarrer() {
   decor.interieur = inte.scene; decor.etage = etage.scene; coques.coupe = coupe.scene; coques.etage = et.scene;
   scene.add(inte.scene, etage.scene, coupe.scene, et.scene);
   montrer(vue, ECRANS[ecran]?.famille !== false);
-  planter(null); arbres.pommier = charger('arbres/pommier').then((g) => { centrerTronc(g.scene); g.scene.visible = etat.arbre === 'pommier'; scene.add(g.scene); arbres.pommier = g; return g; });
+  if (!arbres.pommier) chargerArbre('pommier');
   mesures.complet = (performance.now() - DEBUT) / 1000; mesures.tout = total;
 }
 
@@ -369,13 +400,14 @@ let images = 0, t0 = performance.now();
 const horloge = new THREE.Clock(); const tmp = new THREE.Vector3();
 function image(dt) {
   for (const mx of mixers) mx.update(dt);
-  avancerTrajet(dt); controls.update(); renderer.render(scene, camera);
+  avancerTrajet(dt); avancerCroissance(dt); controls.update(); renderer.render(scene, camera);
   const b = ECRANS[ecran]?.bulle; const bulle = $('bulle');
   if (b && !trajet) { tmp.set(...b.p).project(camera); bulle.hidden = tmp.z > 1; bulle.textContent = b.t; bulle.style.left = ((tmp.x + 1) / 2) * innerWidth + 'px'; bulle.style.top = ((1 - tmp.y) / 2) * innerHeight + 'px'; }
   else bulle.hidden = true;
 }
 window.__image = (dt = 0.1) => { if (trajet) trajet.t = 1; avancerTrajet(0); image(dt); };
 window.__aller = (n) => { aller(n); if (trajet) { trajet.t = 1; avancerTrajet(0); } };
+window.__rituel = async (n, t = 1) => { if (n === 'plaque') { await ceremonie(); if (trajet) { trajet.t = 1; avancerTrajet(0); } if (croissance) { croissance.t = 0; avancerCroissance(2.6 * t); } } else rituel(n); };
 window.__famille = () => [...instances.entries()].map(([id, it]) => [id, it.avatar, it.obj.visible, it.obj.position.toArray().map((v) => +v.toFixed(2)), new THREE.Box3().setFromObject(it.obj).getSize(new THREE.Vector3()).toArray().map((v) => +v.toFixed(2))]);
 window.__etat = () => ({ pret: !!mesures.pret, complet: !!mesures.complet, mesures, triangles: renderer.info.render.triangles, etat });
 window.__choisir = (cle, val) => { etat[cle] = val; if (cle === 'arbre') return planter(val).then(dessiner); dessiner(); };

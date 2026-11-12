@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ma Maison en Jeu</title>
 <meta name="description" content="Prolongez votre visite Clever'hom : votre future maison, en 3D, sur votre téléphone.">
-<link rel="stylesheet" href="style.css?v=202611121400">
+<link rel="stylesheet" href="style.css?v=202611121405">
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
@@ -48,6 +48,26 @@
   <button class="suite" id="suite" type="button"></button>
 </section>
 
+<!-- le moment de l'arbre : introduction, puis plantation -->
+<section class="rituel" id="rituel-intro" hidden aria-live="polite">
+  <div class="rituel-texte">
+    <p class="etiquette">Avant d'entrer</p>
+    <h2>Toute maison commence par un&nbsp;arbre</h2>
+    <p class="vers" style="--i:0">Il sera là avant les premiers cartons.</p>
+    <p class="vers" style="--i:1">Il grandira avec ceux qui vivront ici.</p>
+    <p class="vers" style="--i:2">Et il sera encore là pour les suivants.</p>
+    <button class="suite vers" style="--i:3.4" id="rituel-choisir" type="button">Choisir notre arbre</button>
+  </div>
+</section>
+<section class="rituel plaque" id="rituel-plaque" hidden aria-live="polite">
+  <div class="rituel-texte">
+    <p class="etiquette" id="plaque-date"></p>
+    <h2 id="plaque-titre"></h2>
+    <p class="vers" style="--i:0" id="plaque-voeu"></p>
+    <button class="suite vers" style="--i:1" id="rituel-famille" type="button">Faire entrer la famille</button>
+  </div>
+</section>
+
 <div class="chargement" id="chargement" role="status" aria-live="polite">
   <img class="logo-ouverture" src="assets/img/cleverhom-web.png" alt="Maisons Clever'hom">
   <div class="barre"><div id="barre"></div></div>
@@ -55,6 +75,6 @@
 </div>
 <pre class="mesures" id="mesures" hidden></pre>
 
-<script type="module" src="app.js?v=202611121400"></script>
+<script type="module" src="app.js?v=202611121405"></script>
 </body>
 </html>
