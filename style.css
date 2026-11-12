@@ -133,10 +133,10 @@ body[data-rituel] .question, body[data-rituel] .panneau, body[data-rituel] .bull
 .rituel { position: fixed; inset: 0; z-index: 10; display: flex; align-items: flex-end; justify-content: center; padding: 0 24px max(28px, env(safe-area-inset-bottom));
   background: linear-gradient(180deg, rgba(253, 236, 227, 0) 0%, rgba(253, 236, 227, 0.55) 38%, rgba(253, 236, 227, 0.96) 62%); animation: voile 1.2s ease both; }
 .rituel.plaque { background: linear-gradient(180deg, rgba(253, 236, 227, 0) 0%, rgba(253, 236, 227, 0) 45%, rgba(253, 236, 227, 0.95) 72%); animation-delay: 2.4s; }
-.rituel-texte { width: 100%; max-width: 380px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.rituel-texte { width: 100%; max-width: 380px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .rituel h2 { margin: 4px 0 10px; font-family: "Righteous", sans-serif; font-weight: 400; font-size: clamp(26px, 8vw, 34px); line-height: 1.08; text-transform: uppercase; letter-spacing: 0.04em; }
 .rituel h2::after { content: ""; display: block; width: 44px; height: 3px; border-radius: 2px; background: var(--sauge); margin: 14px auto 0; }
-.rituel .vers { margin: 0; font-size: 19px; line-height: 1.35; opacity: 0; transform: translateY(6px); animation: vers 1s ease forwards; animation-delay: calc(0.9s + var(--i) * 1.1s); }
+.rituel .vers { margin: 0; font-size: 19px; line-height: 1.35; opacity: 0; transform: translateY(6px); animation: vers 1s ease forwards; animation-delay: calc(0.8s + var(--i) * 0.9s); }
 .rituel .suite.vers { margin-top: 18px; }
 .rituel > .rituel-texte > .etiquette, .rituel h2 { opacity: 0; animation: vers 1s ease forwards 0.3s; }
 .rituel.plaque .etiquette { animation-delay: 2.4s; }
