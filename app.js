@@ -19,6 +19,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
+renderer.localClippingEnabled = true; // les meubles ajoutés au rez-de-chaussée sont coupés à la hauteur des murs de la vue en coupe
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
@@ -136,7 +137,20 @@ zone9.rotation.x = -Math.PI / 2; zone9.position.set(5.96, 2.94, 1.355); zone9.vi
 // ---------- styles de décoration ----------
 // « Moderne et épuré » : la maison telle qu'elle est. « Chaleureux et coloré » : on cache certains meubles du modèle d'intérieur,
 // on pose à leur place des modèles des banques (chargés seulement à la demande) et les murs d'accent sauge passent en blanc.
+// position du centre d'un objet (mise en cache), pour cacher un meuble selon l'endroit où il est
+// verre légèrement teinté : la vraie transparence du modèle rendait la paroi invisible vue d'en haut
+const VERRE = new THREE.MeshStandardMaterial({ color: '#d6ecf2', transparent: true, opacity: 0.38, roughness: 0.05, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide });
+const COUPE_RDC = [new THREE.Plane(new THREE.Vector3(0, -1, 0), 1.3)]; VERRE.clippingPlanes = COUPE_RDC;
+const centreDe = (m) => m.userData.centre || (m.userData.centre = new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3()));
 const DECO = {
+  // salle d'eau du bas, commune aux deux styles : douche vitrée et meuble vasque à la place de la cabine grise et du lavabo colonne
+  commun: {
+    cacher: (m) => /^Sink_Main/.test(m.name) || (/^Object_[2-6]$/.test(m.name) && centreDe(m).x > 4.5 && centreDe(m).z > 4.4 && centreDe(m).y < 2.5),
+    poser: [
+      { f: 'douche', long: 1.0, x: 5.6, y: 0.0, z: 5.2, r: 0, verre: /^Cube\.?00[1-4]/ },                     // douche vitrée (Shower, Ali_Army107), ouverture côté pièce
+      { f: 'lavabo', long: 0.75, ech: [1, 1.6, 1.5], x: 7.38, y: 0.0, z: 4.55, r: -Math.PI / 2 }, // meuble vasque et miroir rond (kimlong070809) contre le mur est
+    ],
+  },
   chaleureux: {
     cacher: /^(Material2_38$|Material2_8$|Material2_15$|Material2_[1-6]$|Material2_9$|Material2_1[23]$|Material2_3[4-7]$|Material2_41$|Material2_7$|Material2_24$|Stool_02_Wood_0|Flower-Vase|Phalaenopsis)/,
     poser: [
@@ -147,6 +161,7 @@ const DECO = {
       { f: 'lampe', haut: 1.05, x: 0.35, y: 0.034, z: 5.3, r: 0 },               // lampe Margot verte (Athezza, Pyramidas) à la place du lampadaire boule blanc
       { f: 'table', long: 1.23, x: 2.05, y: 0.0, z: 1.55, r: 0 },                 // table et chaises (Table & Chair Sets, everycraft) sous la suspension
       { f: 'tulipes', haut: 0.38, x: 2.05, y: 0.745, z: 1.55, r: 0.4 },           // bouquet de tulipes (alban) au centre de la table
+      { f: 'fauteuil_parents', haut: 0.8, x: 2.6, y: 2.9, z: 0.5, r: -2.42, etage: true }, // chambre parentale : fauteuil (Clotilde Ngoma, Maride) dans l'angle, tourné vers le lit
     ],
   },
 };
@@ -171,19 +186,28 @@ function mursBlancs(oui) {
       if (mat.userData.mapOrigine === undefined) { if (!mat.map) { mat.userData.mapOrigine = null; continue; } mat.userData.mapOrigine = mat.map; }
       const o = mat.userData.mapOrigine; if (!o) continue; const b = sansSauge(o); if (!b) continue; mat.map = oui ? b : o; } });
 }
-async function appliquerStyle(nom) {
-  styleActif = nom; const D = DECO[nom];
-  if (decor.interieur) decor.interieur.traverse((m) => { if (m.isMesh) m.visible = !(D && D.cacher.test(m.name)); });
-  for (const [k, g] of Object.entries(decoPosee)) g.visible = k === nom;
-  mursBlancs(nom === 'chaleureux');
-  if (!D || decoPosee[nom]) return;
-  const groupe = new THREE.Group(); decoPosee[nom] = groupe; scene.add(groupe);
+const cache = (nom, m) => { const c = DECO[nom]?.cacher; return !!c && (typeof c === 'function' ? c(m) : c.test(m.name)); };
+async function poserDeco(nom) {
+  if (decoPosee[nom]) return decoPosee[nom]; const D = DECO[nom];
+  const groupe = new THREE.Group(); decoPosee[nom] = groupe; groupe.visible = false; scene.add(groupe);
   await Promise.all(D.poser.map(async (p) => { const g = await charger('deco/' + p.f); const o = g.scene;
     const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3()); o.scale.multiplyScalar(p.haut ? p.haut / t.y : p.long / Math.max(t.x, t.z));
+    if (p.ech) o.scale.multiply(new THREE.Vector3(...p.ech));
     const pivot = new THREE.Group(); pivot.add(o); o.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3());
-    o.position.set(-c.x, -b.min.y, -c.z); pivot.position.set(p.x, p.y, p.z); pivot.rotation.y = p.r;
-    o.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); groupe.add(pivot); }));
-  groupe.visible = styleActif === nom;
+    o.position.set(-c.x, -b.min.y, -c.z); pivot.position.set(p.x, p.y, p.z); pivot.rotation.y = p.r; pivot.userData.etage = !!p.etage;
+    o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true; if (p.verre && p.verre.test(m.name)) m.material = VERRE; if (!p.etage) for (const mt of [].concat(m.material)) mt.clippingPlanes = COUPE_RDC; }); groupe.add(pivot); }));
+  return groupe;
+}
+// meubles du rez-de-chaussée visibles quand l'intérieur l'est, ceux de l'étage quand l'étage l'est
+function visibiliteDeco() {
+  for (const [k, g] of Object.entries(decoPosee)) { g.visible = k === 'commun' || k === styleActif;
+    for (const p of g.children) p.visible = p.userData.etage ? !!decor.etage?.visible : !!decor.interieur?.visible; }
+}
+async function appliquerStyle(nom) {
+  styleActif = nom;
+  for (const [k, racine] of [['interieur', decor.interieur], ['etage', decor.etage]]) if (racine) racine.traverse((m) => { if (m.isMesh) m.visible = !cache('commun', m) && !cache(nom, m); });
+  mursBlancs(nom === 'chaleureux'); visibiliteDeco();
+  if (DECO[nom]) { await poserDeco(nom); visibiliteDeco(); }
 }
 
 // ---------- vues de la maison ----------
@@ -198,7 +222,7 @@ function montrer(nom, fam = true) {
   for (const [k, o] of Object.entries(coques)) o.visible = k === v.coque;
   if (decor.interieur) decor.interieur.visible = v.interieur;
   if (decor.etage) decor.etage.visible = v.etage;
-  zone9.visible = nom === 'etage';
+  zone9.visible = nom === 'etage'; visibiliteDeco();
   placerFamille();
 }
 // terre au pied de l'arbre, visible seulement une fois l'arbre planté
@@ -491,7 +515,8 @@ async function demarrer() {
   const [inte, coupe, et, etage] = await Promise.all(['interieur', 'maison-coupe', 'maison-etage', 'etage'].map((n) => charger(n)));
   decor.interieur = inte.scene; decor.etage = etage.scene; coques.coupe = coupe.scene; coques.etage = et.scene;
   scene.add(inte.scene, etage.scene, coupe.scene, et.scene);
-  montrer(vue, ECRANS[ecran]?.famille !== false); if (etat.style) appliquerStyle(etat.style);
+  appliquerStyle(etat.style || 'moderne'); poserDeco('commun').then(visibiliteDeco);
+  montrer(vue, ECRANS[ecran]?.famille !== false);
   if (!arbres.pommier) chargerArbre('pommier');
   mesures.complet = (performance.now() - DEBUT) / 1000; mesures.tout = total;
 }
@@ -508,6 +533,7 @@ function image(dt) {
   else bulle.hidden = true;
 }
 window.__image = (dt = 0.1) => { if (trajet) trajet.t = 1; avancerTrajet(0); image(dt); };
+window.__cadrer = (pos, cible, fov = 40) => { PLANS.test = { pos, cible, fov }; viser('test', true); };
 window.__aller = (n) => { aller(n); if (trajet) { trajet.t = 1; avancerTrajet(0); } };
 window.__rituel = async (n, t = 1) => { if (n === 'plaque') { await ceremonie(); if (trajet) { trajet.t = 1; avancerTrajet(0); } if (croissance) { croissance.t = 0; avancerCroissance(2.6 * t); } } else rituel(n); };
 window.__famille = () => [...instances.entries()].map(([id, it]) => [id, it.avatar, it.obj.visible, it.obj.position.toArray().map((v) => +v.toFixed(2)), new THREE.Box3().setFromObject(it.obj).getSize(new THREE.Vector3()).toArray().map((v) => +v.toFixed(2))]);
