@@ -487,7 +487,8 @@ const ECRANS = {
     },
     contenu: () => {
       const m = membreActif(); const animal = m.type === 'animal';
-      return `<div class="champs"><div class="champ"><label for="prenom-m">${m.moi ? 'Votre prénom' : 'Prénom'}</label><input id="prenom-m" autocomplete="${m.moi ? 'given-name' : 'off'}" maxlength="20" placeholder="${animal ? 'Son nom' : m.moi ? 'Votre prénom' : 'Son prénom'}" value="${esc(m.prenom)}"></div>`
+      return (m.moi && etat.prenomManquant && !moi.prenom.trim() ? `<p class="alerte">Indiquez votre prénom pour entrer dans la maison.</p>` : '')
+        + `<div class="champs"><div class="champ"><label for="prenom-m">${m.moi ? 'Votre prénom' : 'Prénom'}</label><input id="prenom-m" autocomplete="${m.moi ? 'given-name' : 'off'}" maxlength="20" placeholder="${animal ? 'Son nom' : m.moi ? 'Votre prénom' : 'Son prénom'}" value="${esc(m.prenom)}"></div>`
         + (animal ? '' : `<div class="champ age"><label for="age-m">Âge</label><input id="age-m" type="number" inputmode="numeric" min="0" max="110" placeholder="ans" value="${esc(m.age)}"></div>`) + `</div>`
         + (m.moi ? '' : `<div class="onglets">${TYPES.map(([t, l]) => `<button type="button" class="puce" data-type="${t}" aria-pressed="${t === 'animal' ? animal : !animal}">${l}</button>`).join('')}</div>`)
         + `<div id="visages">${visagesHtml(m)}</div>`
@@ -499,7 +500,7 @@ const ECRANS = {
       if (el.dataset.avatar) { m.avatar = el.dataset.avatar; synchroniserFamille(); return; }
       const i = m.habitudes.indexOf(id); if (i >= 0) m.habitudes.splice(i, 1); else m.habitudes.push(id);
     },
-    suite: () => moi.prenom.trim() ? 'Entrer dans la maison' : 'Indiquez votre prénom', pret: () => !!moi.prenom.trim(),
+    suite: () => 'Entrer dans la maison', pret: () => true,
   },
   style: {
     vue: 'coupe', plan: 'salon', etape: 'Étape 3 sur 4 · Votre intérieur',
@@ -581,7 +582,9 @@ $('puces').addEventListener('click', (ev) => {
   const b = ev.target.closest('.puce'); if (!b) return; ECRANS[ecran].puce(b.dataset.id); dessiner(); });
 $('contenu').addEventListener('click', (ev) => { const b = ev.target.closest('[data-id],[data-type],[data-avatar],[data-action]'); if (!b || !ECRANS[ecran].clic) return; ECRANS[ecran].clic(b.dataset.id, b); dessiner(); });
 let attenteAge = null;
+$('contenu').addEventListener('change', (ev) => { if (ev.target.id === 'prenom-m') { const m = membreActif(); m.prenom = ev.target.value.trim() ? ev.target.value : ''; $('puces').innerHTML = ECRANS[ecran].puces().map(puceHtml).join(''); } });
 $('contenu').addEventListener('input', (ev) => {
+  if (ev.target.id === 'prenom-m') ev.target.classList.remove('manquant');
   if (ev.target.id === 'prenom') etat.prenom = ev.target.value;
   if (ev.target.id === 'contact') etat.contact = ev.target.value;
   if (ev.target.id === 'accord') etat.accord = ev.target.checked;
@@ -612,6 +615,10 @@ $('rituel-famille').addEventListener('click', () => { if (croissance) { croissan
 $('suite').addEventListener('click', () => {
   if (ecran === 'fiche') { if (etat.envoye) { location.reload(); return; } etat.envoye = true; dessiner(); return; }
   if (ecran === 'arbre') { ceremonie(); return; }
+  if (ecran === 'famille') { // le prénom du joueur est demandé ; on relit le champ (le remplissage automatique d'iOS ne prévient pas toujours)
+    const champ = $('prenom-m'); if (champ && membreActif() === moi) moi.prenom = champ.value.trim() ? champ.value : '';
+    if (!moi.prenom.trim()) { etat.membre = moi.id; etat.prenomManquant = true; dessiner(); const c = $('prenom-m'); c.classList.add('manquant'); c.focus(); return; }
+    etat.prenomManquant = false; }
   if (ecran === 'aventures' && etat.aventure === 'noel') { aller('noel'); return; }
   if (ecran === 'noel') { if (!noel.fait) { ouvrirBoule(); return; } if (!noel.dedans) { vueNoel(true); dessiner(); return; } aller('fiche'); return; }
   aller(ORDRE[ORDRE.indexOf(ecran) + 1]);
@@ -651,7 +658,10 @@ function image(dt) {
   for (const mx of mixers) mx.update(dt);
   avancerTrajet(dt); avancerCroissance(dt); avancerNoel(dt); controls.update(); renderer.render(scene, camera);
   const b = ECRANS[ecran]?.bulle; const bulle = $('bulle');
-  if (b && !trajet) { tmp.set(...b.p).project(camera); bulle.hidden = tmp.z > 1; bulle.textContent = b.t; bulle.style.left = ((tmp.x + 1) / 2) * innerWidth + 'px'; bulle.style.top = ((1 - tmp.y) / 2) * innerHeight + 'px'; }
+  if (b && !trajet) { tmp.set(...b.p).project(camera); bulle.hidden = tmp.z > 1; bulle.textContent = b.t; bulle.style.left = ((tmp.x + 1) / 2) * innerWidth + 'px'; bulle.style.top = ((1 - tmp.y) / 2) * innerHeight + 'px';
+    // pas de bulle par-dessus le bandeau ou le panneau (petits écrans) : elle cacherait les boutons
+    const haut = $('question').getBoundingClientRect().bottom, bas = $('panneau').getBoundingClientRect().top, y = ((1 - tmp.y) / 2) * innerHeight;
+    if (y < haut + 36 || y > bas) bulle.hidden = true; }
   else bulle.hidden = true;
 }
 window.__image = (dt = 0.1) => { if (trajet) trajet.t = 1; avancerTrajet(0); image(dt); };
