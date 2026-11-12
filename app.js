@@ -168,7 +168,7 @@ async function planter(id) {
 
 // ---------- ce que le joueur choisit ----------
 let numero = 0; const membre = (prenom, age, type, avatar) => ({ id: 'm' + (++numero), prenom, age, type, avatar, habitudes: [] });
-const etat = { valeur: null, arbre: null, membres: [membre('Léa', 36, 'adulte', 'f05'), membre('Thomas', 38, 'adulte', 'm08'), membre('Lou', 8, 'enfant', 'garcon1'), membre('Biscotte', '', 'animal', 'chien')], membre: 'm1', salon: [], piece: null, chambres: 3, aventure: null, prenom: '', contact: '', accord: false, envoye: false };
+const etat = { valeur: null, arbre: null, membres: [membre('Léa', 36, 'adulte', 'f07'), membre('Thomas', 38, 'adulte', 'm04'), membre('Lou', 8, 'enfant', 'garcon1'), membre('Biscotte', '', 'animal', 'chien')], membre: 'm1', salon: [], piece: null, chambres: 3, aventure: null, prenom: '', contact: '', accord: false, envoye: false };
 
 const ARBRES = [
   { id: 'pommier', nom: 'Pommier', le: 'le pommier', couleur: '#d6382f', titre: "Le pommier · l'abondance", texte: "Ce que l'on cultive et que l'on transmet. L'arbre des vergers alsaciens." },
@@ -337,7 +337,7 @@ $('jouer').addEventListener('click', () => aller('arbre'));
 // ---------- démarrage ----------
 const mesures = {};
 async function demarrer() {
-  CATALOGUE = await (await fetch('assets/avatars/catalogue.json')).json();
+  CATALOGUE = await (await fetch('assets/avatars/catalogue.json?v=' + Date.now())).json();
   const ATTENDU = 4.6e6; // maison, jardin et famille de départ
   for (const m of etat.membres) octets[m.avatar] = 0;
   const [ext, jardin] = await Promise.all(['maison-exterieur', 'jardin'].map((n) => charger(n, ATTENDU)));

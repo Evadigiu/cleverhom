@@ -1,45 +1,6 @@
 {
- "adulte": [
-  "f01",
-  "f03",
-  "f05",
-  "f08",
-  "f09",
-  "f11",
-  "f12",
-  "f13",
-  "f14",
-  "m01",
-  "m04",
-  "m06",
-  "m08",
-  "m10",
-  "m12",
-  "m16",
-  "m17",
-  "m18",
-  "m20"
- ],
- "senior": [
-  "m03",
-  "m14",
-  "f09",
-  "f14"
- ],
- "enfant": [
-  "fille1",
-  "garcon1",
-  "garcon2"
- ],
- "animal": [
-  "chien",
-  "chien_labrador",
-  "chien_bergerallemand",
-  "chien_husky",
-  "chien_bordercollie",
-  "chien_beagle",
-  "chien_jackrussell",
-  "chien_corgi",
-  "chat"
- ]
+ "adulte": ["fb1", "f04", "f07", "fs2", "f12", "hb2", "hb6", "hb4", "m04", "m09"],
+ "senior": ["fb2", "m03", "m14"],
+ "enfant": ["fille1", "garcon1"],
+ "animal": ["chien", "chien_labrador", "chien_bergerallemand", "chien_husky", "chien_bordercollie", "chien_beagle", "chien_jackrussell", "chien_corgi", "chat"]
 }
