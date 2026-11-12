@@ -149,19 +149,22 @@ function montrer(nom, fam = true) {
 const terre = new THREE.Mesh(new THREE.CircleGeometry(0.75, 40), new THREE.MeshStandardMaterial({ color: '#6b4b33', roughness: 1 }));
 terre.rotation.x = -Math.PI / 2; terre.position.set(-5.6, -0.295, 0.9); terre.receiveShadow = true; terre.visible = false; scene.add(terre);
 // recentre un arbre pour que son tronc (le bas du modèle) tombe au milieu de la terre
-function centrerTronc(racine) {
+// arbre : le pied du tronc au centre de la terre ; arbuste sans tronc net (noisetier) : le milieu du feuillage
+const PAR_COURONNE = new Set(['noisetier']);
+function centrerTronc(racine, couronne = false) {
   racine.updateMatrixWorld(true);
   let ymin = Infinity; const v = new THREE.Vector3(); const pts = [];
   racine.traverse((m) => { if (!m.isMesh) return; const pos = m.geometry.attributes.position; const pas = Math.max(1, Math.floor(pos.count / 4000));
     for (let i = 0; i < pos.count; i += pas) { v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld); pts.push(v.x, v.y, v.z); if (v.y < ymin) ymin = v.y; } });
   let sx = 0, sz = 0, n = 0;
-  for (let i = 0; i < pts.length; i += 3) if (pts[i + 1] < ymin + 0.35) { sx += pts[i]; sz += pts[i + 2]; n++; }
+  if (couronne) { let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity; for (let i = 0; i < pts.length; i += 3) { x0 = Math.min(x0, pts[i]); x1 = Math.max(x1, pts[i]); z0 = Math.min(z0, pts[i + 2]); z1 = Math.max(z1, pts[i + 2]); } sx = (x0 + x1) / 2; sz = (z0 + z1) / 2; n = 1; }
+  else for (let i = 0; i < pts.length; i += 3) if (pts[i + 1] < ymin + 0.35) { sx += pts[i]; sz += pts[i + 2]; n++; }
   if (n) { racine.position.x += terre.position.x - sx / n; racine.position.z += terre.position.z - sz / n; }
 }
 async function planter(id) {
   terre.visible = !!id;
   if (!id) { for (const a of Object.values(arbres)) if (a.scene) a.scene.visible = false; return; }
-  if (!arbres[id]) arbres[id] = charger('arbres/' + id).then((g) => { centrerTronc(g.scene); scene.add(g.scene); arbres[id] = g; return g; });
+  if (!arbres[id]) arbres[id] = charger('arbres/' + id).then((g) => { centrerTronc(g.scene, PAR_COURONNE.has(id)); scene.add(g.scene); arbres[id] = g; return g; });
   const g = await arbres[id];
   for (const [k, a] of Object.entries(arbres)) if (a.scene) a.scene.visible = k === id && etat.arbre === id;
 }
