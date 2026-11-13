@@ -141,7 +141,8 @@ let familleVisible = true;
 // accueil : une famille d'exemple pour le décor (le joueur seul + un conjoint, une fillette et un golden retriever).
 // Elle n'entre jamais dans les données : dès le parcours commencé, seule la vraie famille est affichée.
 const VITRINE = [{ id: 'v1', avatar: 'hb6', type: 'adulte' }, { id: 'v2', avatar: 'fille1', type: 'enfant' }, { id: 'v3', avatar: 'chien', type: 'animal' }];
-const familleAffichee = () => ecran === 'accueil' && etat.membres.length === 1 ? etat.membres.concat(VITRINE) : etat.membres;
+const familleAffichee = () => ['accueil', 'cles', 'fin'].includes(ecran) && etat.membres.length === 1 ? etat.membres.concat(VITRINE) : etat.membres;
+const NOMS_FAMILLE = { f07: 'la maman', hb6: 'le papa', fille1: 'la petite fille', chien: 'le chien' };
 async function synchroniserFamille() {
   const liste = familleAffichee(); const ids = new Set(liste.map((m) => m.id));
   for (const [id, it] of instances) if (!ids.has(id)) { scene.remove(it.obj); if (it.mixer) mixers.delete(it.mixer); instances.delete(id); }
@@ -745,10 +746,12 @@ function zoneToucher(o) { if (o.userData.zone) return; const b = new THREE.Box3(
   const r = Math.max(0.55, Math.max(t.x, t.y, t.z) * 0.6); const z = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), ZONE_TOUCHER); z.scale.set(Math.max(r, t.x * 0.6), Math.max(r, t.y * 0.6), Math.max(r, t.z * 0.6));
   z.position.copy(o.worldToLocal(c.clone())); z.scale.divide(o.getWorldScale(new THREE.Vector3())); o.add(z); o.userData.zone = z; }
 function lancerChasse() {
+  cles.objets = cles.objets.filter((o) => !o.famille);
+  for (const m of familleAffichee()) { const it = instances.get(m.id); if (it?.obj?.visible) { cles.objets.push({ id: 'fam_' + m.id, nom: NOMS_FAMILLE[m.avatar] || 'la famille', o: it.obj, famille: true }); zoneToucher(it.obj); } }
   for (const [f, nom] of Object.entries(DEJA_LA)) if (jardinPivots[f] && !cles.objets.some((o) => o.id === f)) cles.objets.push({ id: f, nom, o: jardinPivots[f] });
   for (const o of cles.objets) if (!/^erable/.test(o.id)) zoneToucher(o.o); // les arbres sont déjà assez grands
   const dispo = cles.objets.filter((o) => o.o.parent && o.o.visible); const melange = dispo.map((o) => [Math.random(), o]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
-  cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.trouvees = 0; cles.temps = 45; cles.en_cours = true; cles.fini = false; cles.indice = false; dessiner();
+  cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.trouvees = 0; cles.temps = DUREE_JEU; cles.en_cours = true; cles.fini = false; cles.indice = false; cles.debut = performance.now(); son('go'); dessiner(); message('Touchez les objets du jardin et la famille !');
 }
 function message(txt) { let t = $('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
   t.textContent = txt; t.classList.remove('vu'); void t.offsetWidth; t.classList.add('vu'); }
@@ -758,15 +761,15 @@ function fouiller(obj) {
   if (cles.avec.has(obj.id)) { cles.avec.delete(obj.id); cles.trouvees++;
     const b = new THREE.Box3().setFromObject(obj.o); const k = cles.cle.clone(); k.visible = true; k.position.set((b.min.x + b.max.x) / 2, Math.min(b.max.y, 1.6) + 0.15, (b.min.z + b.max.z) / 2); scene.add(k);
     cles.anims.push({ o: k, t: 0, y0: k.position.y, type: 'cle' });
-    message(cles.trouvees < 3 ? `Une clé sous ${obj.nom} ! 🔑` : 'Les 3 clés ! 🎉');
-    if (cles.trouvees >= 3) { cles.en_cours = false; cles.fini = true; setTimeout(confettis, 600); }
+    message(cles.trouvees < 3 ? `Une clé sous ${obj.nom} ! 🔑` : 'Les 3 clés ! 🎉'); son('cle');
+    if (cles.trouvees >= 3) { cles.en_cours = false; cles.fini = true; cles.reussi = true; cles.duree = Math.round((performance.now() - cles.debut) / 1000); setTimeout(() => { confettis(); son('victoire'); }, 500); setTimeout(() => { confettis(); aller('fin'); }, 2600); }
     dessiner(); }
-  else message(`Rien sous ${obj.nom}…`);
+  else { message(`Rien sous ${obj.nom}…`); son('rate'); }
 }
 let appui = null;
 canvas.addEventListener('pointerdown', (ev) => { appui = [ev.clientX, ev.clientY]; });
 canvas.addEventListener('pointerup', (ev) => {
-  if (ecran !== 'cles' || !(cles.en_cours || (cles.indice && !cles.fini)) || !appui || Math.hypot(ev.clientX - appui[0], ev.clientY - appui[1]) > 10) return; // un glissé fait tourner la vue, ce n'est pas un toucher
+  if (ecran !== 'cles' || !cles.en_cours || !appui || Math.hypot(ev.clientX - appui[0], ev.clientY - appui[1]) > 10) return; // un glissé fait tourner la vue, ce n'est pas un toucher
   viserDoigt(ev);
   const h = rayon.intersectObjects(cles.objets.map((o) => o.o), true)[0]; if (!h) return;
   const obj = cles.objets.find((x) => { let o = h.object; while (o) { if (o === x.o) return true; o = o.parent; } return false; }); if (obj) fouiller(obj);
@@ -779,11 +782,34 @@ function avancerCles(dt) {
   cles.anims = cles.anims.filter((a) => (a.type === 'secoue' ? a.t < 0.45 : a.type === 'cle' ? a.t <= 1.6 : !cles.fini));
   if (!cles.en_cours) return;
   const avant = Math.ceil(cles.temps); cles.temps = Math.max(0, cles.temps - dt);
-  if (Math.ceil(cles.temps) !== avant && ecran === 'cles') $('intitule').textContent = ECRANS.cles.intitule();
+  const b = $('barre-in'); if (b) { const r = cles.temps / DUREE_JEU; b.style.width = (r * 100) + '%'; b.classList.toggle('urgent', r < 0.25); }
+  if (Math.ceil(cles.temps) !== avant) { const c = $('chrono'); if (c) c.textContent = Math.ceil(cles.temps) + ' s'; if (cles.temps < 10 && cles.temps > 0) son('tic'); }
   if (cles.temps <= 0) { // temps écoulé : personne ne repart bredouille, les cachettes restantes sautillent pour se montrer
-    cles.en_cours = false; cles.indice = true; message('Temps écoulé ! Les clés se montrent…');
-    for (const o of cles.objets) if (cles.avec.has(o.id)) cles.anims.push({ o: o.o, t: 0, y0: o.o.position.y, type: 'indice' }); dessiner(); }
+    cles.en_cours = false; cles.indice = true; cles.reussi = false; message('Temps écoulé ! Voici où étaient les clés…'); son('perdu');
+    for (const o of cles.objets) if (cles.avec.has(o.id)) cles.anims.push({ o: o.o, t: 0, y0: o.o.position.y, type: 'indice' }); dessiner(); setTimeout(() => { if (ecran === 'cles') aller('fin'); }, 3200); }
 }
+// ---------- le jeu : décompte de 5 secondes, sons d'arcade (dessinés par le navigateur, sans fichier) ----------
+const DUREE_JEU = 45;
+let audio = null;
+function son(type) {
+  try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) { return; }
+  const t0 = audio.currentTime, bip = (f, t, d, forme = 'square', v = 0.12, f2) => { const o = audio.createOscillator(), g = audio.createGain(); o.type = forme; o.frequency.setValueAtTime(f, t0 + t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + t + d);
+    g.gain.setValueAtTime(v, t0 + t); g.gain.exponentialRampToValueAtTime(0.001, t0 + t + d); o.connect(g); g.connect(audio.destination); o.start(t0 + t); o.stop(t0 + t + d + 0.05); };
+  if (type === 'decompte') { for (let i = 0; i < 5; i++) { bip(330 + i * 40, i, 0.18, 'square', 0.14); bip(82 + i * 10, i, 0.9, 'sawtooth', 0.05, 90 + i * 12); } } // battements qui montent : suspense
+  if (type === 'go') { bip(523, 0, 0.12); bip(659, 0.1, 0.12); bip(784, 0.2, 0.35, 'square', 0.16); }
+  if (type === 'cle') { bip(988, 0, 0.08, 'square', 0.12); bip(1319, 0.08, 0.25, 'square', 0.12); }
+  if (type === 'rate') bip(220, 0, 0.12, 'triangle', 0.1, 160);
+  if (type === 'tic') bip(1200, 0, 0.05, 'square', 0.06);
+  if (type === 'victoire') [523, 659, 784, 1047, 784, 1047].forEach((f, i) => bip(f, i * 0.12, i === 5 ? 0.6 : 0.14, 'square', 0.13));
+  if (type === 'perdu') [392, 349, 311, 262].forEach((f, i) => bip(f, i * 0.22, 0.3, 'triangle', 0.15));
+}
+function decompte() {
+  const d = document.createElement('div'); d.className = 'decompte'; document.body.appendChild(d); son('decompte');
+  let n = 5; const pas = () => { if (!d.isConnected) return; d.innerHTML = `<span>${n > 0 ? n : 'GO !'}</span>`;
+    if (n > 0) { n--; setTimeout(pas, 1000); } else setTimeout(() => { if (!d.isConnected) return; d.remove(); lancerChasse(); }, 650); };
+  pas();
+}
+function lancerJeu() { arreterChasse(); cles.fini = cles.indice = false; cles.reussi = false; cles.pret = false; aller('cles'); setTimeout(decompte, 700); }
 function arreterChasse() { cles.en_cours = false; for (const a of cles.anims) if (a.type === 'indice') a.o.position.y = a.y0; cles.anims = []; }
 
 // ---------- pelouse : une herbe dense et vivante, dessinée une fois (brins, touffes, légères bandes de tonte) ----------
@@ -1035,11 +1061,18 @@ const ECRANS = {
   },
   cles: {
     vue: 'exterieur', plan: 'cles', etape: '🔑',
-    intitule: () => cles.fini ? 'La maison est à vous !' : cles.en_cours ? `Clés : ${cles.trouvees}/3 · ${Math.ceil(cles.temps)} s` : cles.indice ? `Clés : ${cles.trouvees}/3 · touchez ce qui bouge` : 'La chasse aux clés',
-    contenu: () => cles.fini ? `<div class="cadeau"><b>🎁 Bravo, vous avez trouvé les 3 clés !</b><span>Un cadeau vous attend : présentez cet écran à votre conseiller Clever’hom.</span></div>`
-      : (cles.en_cours || cles.indice) ? `<div class="trousseau">${[0, 1, 2].map((i) => `<i class="${i < cles.trouvees ? 'ok' : ''}">🔑</i>`).join('')}</div>`
-      : `<p class="accroche">Trois clés sont cachées dans le jardin. Touchez les objets pour les trouver : vous avez 45 secondes !</p>`,
-    suite: () => cles.fini || cles.indice ? 'Continuer' : cles.en_cours ? 'Cherchez les clés…' : 'Commencer', pret: () => !cles.en_cours,
+    intitule: () => cles.fini ? 'Bravo !' : cles.indice ? 'Temps écoulé !' : cles.en_cours ? 'Trouvez les 3 clés !' : 'Prêt ?',
+    contenu: () => `<div class="hud"><div class="trousseau">${[0, 1, 2].map((i) => `<i class="${i < cles.trouvees ? 'ok' : ''}">🔑</i>`).join('')}</div><b id="chrono">${Math.ceil(cles.temps)} s</b></div>
+      <div class="barre"><div class="barre-in" id="barre-in" style="width:${(cles.temps / DUREE_JEU) * 100}%"></div></div>`,
+    suite: () => cles.en_cours ? 'Touchez les objets et la famille !' : cles.fini ? 'Bravo !' : '…', pret: () => false,
+  },
+  fin: {
+    vue: 'exterieur', plan: 'accueil', etape: '🎁',
+    intitule: () => cles.reussi ? 'La maison est à vous !' : 'Presque !',
+    contenu: () => cles.reussi
+      ? `<div class="cadeau"><b>🎉 Les 3 clés en ${cles.duree} secondes !</b><span>Vous avez gagné un cadeau. Montrez cet écran à un conseiller Clever’hom pour le recevoir… et découvrir la maison en vrai.</span></div>`
+      : `<div class="cadeau"><b>🔑 ${cles.trouvees} clé${cles.trouvees > 1 ? 's' : ''} sur 3</b><span>Retentez votre chance, ou venez voir un conseiller Clever’hom : il a toutes les clés de la maison et vous la fait visiter.</span></div>`,
+    suite: () => 'Rejouer', pret: () => true,
   },
   fete: {
     vue: 'coupe', plan: 'fete', etape: '🥂',
@@ -1146,7 +1179,7 @@ $('rituel-choisir').addEventListener('click', () => rituel(null));
 for (const r of ['rituel-intro', 'rituel-plaque']) $(r).addEventListener('click', (ev) => { if (!ev.target.closest('button')) $(r).classList.add('tout'); });
 $('rituel-famille').addEventListener('click', () => { if (croissance) { croissance.t = 1; avancerCroissance(0); } rituel(null); aller('famille'); });
 $('suite').addEventListener('click', () => {
-  if (ecran === 'cles' && !cles.fini && !cles.indice) { lancerChasse(); return; }
+  if (ecran === 'fin') { lancerJeu(); return; }
   if (ecran === 'fiche') { if (etat.envoye) { location.reload(); return; } etat.envoye = true; dessiner(); return; }
   if (ecran === 'arbre') { ceremonie(); return; }
   if (ecran === 'famille') { // le prénom du joueur est demandé ; on relit le champ (le remplissage automatique d'iOS ne prévient pas toujours)
@@ -1160,8 +1193,8 @@ $('suite').addEventListener('click', () => {
   if (ecran === 'noel') { if (!noel.fait) { ouvrirBoule(); return; } if (!noel.dedans) { vueNoel(true); dessiner(); return; } aller('fiche'); return; }
   aller(ORDRE[ORDRE.indexOf(ecran) + 1]);
 });
-$('retour').addEventListener('click', () => aller(ecran === 'noel' || ecran === 'fete' || ecran === 'naissance' ? 'aventures' : ecran === 'fiche' && noel.fait ? 'noel' : ORDRE[Math.max(0, ORDRE.indexOf(ecran) - 1)]));
-$('jouer').addEventListener('click', () => { aller('arbre'); if (!etat.introVue) { etat.introVue = true; rituel('intro'); } });
+$('retour').addEventListener('click', () => (ecran === 'cles' || ecran === 'fin') ? (arreterChasse(), document.querySelector('.decompte')?.remove(), aller('accueil')) : aller(ecran === 'noel' || ecran === 'fete' || ecran === 'naissance' ? 'aventures' : ecran === 'fiche' && noel.fait ? 'noel' : ORDRE[Math.max(0, ORDRE.indexOf(ecran) - 1)]));
+$('jouer').addEventListener('click', () => { son('tic'); lancerJeu(); });
 
 // ---------- démarrage ----------
 const mesures = {};

@@ -234,3 +234,16 @@ body[data-ecran="arbre"] .question .intitule { margin-bottom: 0; }
 .toast.vu { animation: toast 2.2s ease forwards; }
 @keyframes toast { 0% { opacity: 0; transform: translate(-50%, -6px); } 12% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; } 100% { opacity: 0; } }
 
+
+/* jeu : décompte, chrono, barre de temps */
+.decompte { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: radial-gradient(circle, rgba(0,0,0,0.15), rgba(0,0,0,0.55)); pointer-events: none; }
+.decompte span { font: 900 120px/1 var(--police); color: #fff; -webkit-text-stroke: 4px #1d1d1b; text-shadow: 0 8px 0 var(--vert), 0 14px 30px rgba(0,0,0,0.4); animation: pop 1s ease-out both; }
+@keyframes pop { 0% { transform: scale(2.4); opacity: 0; } 15% { transform: scale(0.92); opacity: 1; } 28% { transform: scale(1.05); } 88% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.9); opacity: 0; } }
+.hud { width: 100%; align-self: stretch; display: flex; align-items: center; justify-content: space-between; }
+.hud .trousseau { justify-content: flex-start; }
+.hud b { font: 900 26px var(--police); font-variant-numeric: tabular-nums; }
+.barre { width: 100%; align-self: stretch; height: 14px; border-radius: 8px; background: #eee3da; overflow: hidden; margin-top: 8px; }
+.barre-in { height: 100%; background: linear-gradient(90deg, #8fb600, var(--vert)); border-radius: 8px; transition: width 0.1s linear; }
+.barre-in.urgent { background: linear-gradient(90deg, #d6382f, #ff7a3e); animation: clignote 0.5s steps(2) infinite; }
+@keyframes clignote { 50% { opacity: 0.55; } }
+body[data-ecran="cles"] #suite { display: none; }
