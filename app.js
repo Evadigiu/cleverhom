@@ -206,7 +206,7 @@ function mursBlancs(oui) {
       const o = mat.userData.mapOrigine; if (!o) continue; const b = sansSauge(o); if (!b) continue; mat.map = oui ? b : o; } });
 }
 const NOEL_CACHE = /^(Stool_02_Wood_0|Flower-Vase|Phalaenopsis)/;
-const FETE_CACHE = /^Material2/; // le salon (canapé, tapis, tables basses) laisse la place à la piste
+const FETE_CACHE = /^(Material2|Flower-Vase|Phalaenopsis)/; // le salon (canapé, tapis, tables basses) laisse la place à la piste
 const cache = (nom, m) => { if (nom !== 'commun' && noelActif && NOEL_CACHE.test(m.name)) return true; if (nom !== 'commun' && feteActive && FETE_CACHE.test(m.name)) return true; const c = DECO[nom]?.cacher; return !!c && (typeof c === 'function' ? c(m) : c.test(m.name)); };
 async function poserDeco(nom) {
   if (decoPosee[nom]) return decoPosee[nom]; const D = DECO[nom];
@@ -222,7 +222,7 @@ async function poserDeco(nom) {
 // meubles du rez-de-chaussée visibles quand l'intérieur l'est, ceux de l'étage quand l'étage l'est
 function visibiliteDeco() {
   for (const [k, g] of Object.entries(decoPosee)) { g.visible = k === 'commun' || k === styleActif;
-    for (const p of g.children) p.visible = (p.userData.etage ? !!decor.etage?.visible : !!decor.interieur?.visible) && !(noelActif && /^(table|tulipes)$/.test(p.userData.f)) && !(feteActive && /^(canape|tapis|fauteuil|tablebasse|lampe)$/.test(p.userData.f)); }
+    for (const p of g.children) p.visible = (p.userData.etage ? !!decor.etage?.visible : !!decor.interieur?.visible) && !(noelActif && /^(table|tulipes)$/.test(p.userData.f)) && !(feteActive && /^(canape|tapis|fauteuil|tablebasse|lampe|tulipes)$/.test(p.userData.f)); }
 }
 async function appliquerStyle(nom) {
   styleActif = nom;
@@ -407,8 +407,11 @@ const FETE = [
   { f: 'guirlande', long: 3.0, p: [[1.55, 2.25, 3.05, 0], [1.55, 2.25, 4.2, 0], [1.55, 2.25, 5.4, 0]], brille: '#ffe9a8' }, // Simple String Lights (TrixtheProtogen)
   { f: 'spot', haut: 0.5, p: [[0.25, 0.0, 2.95, 0], [2.95, 0.0, 5.5, 0]], vise: [1.55, 2.2, 4.2] }, // BEAM LIGHT (eventdesignws), braqués sur la boule
   { f: 'enceinte', long: 0.55, p: [[2.85, 0.0, 3.1, -2.3]] },                            // Bluetooth music boombox (dani-satellite)
+  // buffet sur la table à manger
+  { f: 'gateau', precis: true, table: true, haut: 0.32, p: [[1.85, 0.745, 1.45, 0]] },                              // Strawberry Cake (strawbie133)
+  { f: 'pizza', precis: true, table: true, long: 0.42, p: [[2.35, 0.745, 1.85, 2.6]] },                             // Pizza and pizza box (AMMediaGames)
 ];
-const fete = { groupe: null, charge: null, invites: [], mixers: [], clips: {}, lumieres: [], t: 0, faite: false };
+const fete = { volume: 1, son: null, pluie: null, groupe: null, charge: null, invites: [], mixers: [], clips: {}, lumieres: [], t: 0, faite: false };
 const SEXE = (a) => /^(f|fb|fs|fille)/.test(a) ? 'f' : 'm';
 const ENFANT = (a) => /^(fille|garcon)/.test(a);
 async function clipFete(nom, enfant) {
@@ -422,10 +425,10 @@ function chargerFete() {
   if (fete.charge) return fete.charge;
   fete.groupe = new THREE.Group(); fete.groupe.visible = false; scene.add(fete.groupe);
   fete.charge = Promise.all(FETE.map(async (d) => { const g = await charger('fete/' + d.f);
-    for (const [x, y, z, r] of d.p) { const o = SkeletonUtils.clone(g.scene); const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+    for (const [x, y, z, r] of d.p) { const o = SkeletonUtils.clone(g.scene); const t = new THREE.Box3().setFromObject(o, !!d.precis).getSize(new THREE.Vector3());
       o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
-      const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
-      const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(x, y, z); pivot.rotation.y = r;
+      const b = new THREE.Box3().setFromObject(o, !!d.precis), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
+      const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(x, y, z); pivot.rotation.y = r; pivot.userData.table = d.table;
       if (d.vise) { // le faisceau du modèle part vers +x/+y : on l'oriente vers la boule
         const dir = new THREE.Vector3(...d.vise).sub(pivot.position).normalize(); pivot.quaternion.setFromUnitVectors(new THREE.Vector3(1, 1, 0).normalize(), dir); }
       o.traverse((m) => { if (!m.isMesh) return; m.castShadow = false; m.frustumCulled = false; if (d.brille) { m.material = m.material.clone(); m.material.emissive = new THREE.Color(d.brille); m.material.emissiveIntensity = 0.9; } });
@@ -433,15 +436,61 @@ function chargerFete() {
       fete.groupe.add(pivot); } }));
   // deux lumières de couleur qui tournent autour de la boule
   for (const c of ['#ff3ea5', '#3ec8ff']) { const l = new THREE.PointLight(c, 0, 6, 1.5); fete.groupe.add(l); fete.lumieres.push(l); }
+  fete.pluie = creerPluie(); fete.groupe.add(fete.pluie);
   return fete.charge;
 }
+// pluie de confettis au-dessus de la piste : petits carrés colorés qui tombent en virevoltant
+function creerPluie() {
+  const N = 400, pos = new Float32Array(N * 3), col = new Float32Array(N * 3), vit = new Float32Array(N); const C = ['#c4d000', '#ff3ea5', '#3ec8ff', '#f4c542', '#ffffff', '#ff7a3e'].map((c) => new THREE.Color(c));
+  for (let i = 0; i < N; i++) { pos.set([0.3 + Math.random() * 2.5, Math.random() * 2.6, 2.95 + Math.random() * 2.5], i * 3); C[i % C.length].toArray(col, i * 3); vit[i] = 0.35 + Math.random() * 0.4; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.045, vertexColors: true })); p.userData.vit = vit; p.frustumCulled = false; return p;
+}
+// musique de fête jouée par le navigateur (Web Audio) : grosse caisse, charleston, basse et accords, sans fichier à télécharger
+const musique = { ctx: null, on: false, prochain: 0, pas: 0, tempo: 118, gain: null };
+function demarrerMusique() {
+  if (!musique.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; musique.ctx = new AC(); musique.gain = musique.ctx.createGain(); musique.gain.gain.value = 0.35; musique.gain.connect(musique.ctx.destination); }
+  musique.ctx.resume(); musique.on = true; musique.prochain = musique.ctx.currentTime + 0.05;
+}
+function arreterMusique() { musique.on = false; musique.ctx?.suspend(); }
+function note(t, freq, dur, type, vol, glisse) { const c = musique.ctx, o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(freq, t); if (glisse) o.frequency.exponentialRampToValueAtTime(glisse, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(g); g.connect(musique.gain); o.start(t); o.stop(t + dur + 0.02); }
+function charleston(t, vol) { const c = musique.ctx, n = c.sampleRate * 0.05, b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  const s = c.createBufferSource(); s.buffer = b; const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000; const g = c.createGain(); g.gain.value = vol; s.connect(f); f.connect(g); g.connect(musique.gain); s.start(t); }
+const BASSE = [55, 55, 82.4, 55, 73.4, 73.4, 61.7, 82.4], ACCORDS = [[220, 277, 330], [220, 277, 330], [196, 247, 294], [208, 262, 311]];
+function avancerMusique() {
+  if (!musique.on || !musique.ctx) return; const c = musique.ctx, croche = 60 / (musique.tempo * fete.volume) / 2;
+  while (musique.prochain < c.currentTime + 0.2) { const t = musique.prochain, k = musique.pas % 16;
+    if (k % 2 === 0) note(t, 150, 0.18, 'sine', 0.9, 45);                                  // grosse caisse sur chaque temps
+    if (k % 2 === 1) charleston(t, 0.25);                                                    // charleston à contretemps
+    if (k % 4 === 2) charleston(t, 0.12);
+    note(t, BASSE[(k >> 1) % 8], croche * 0.9, 'sawtooth', 0.12);                            // basse en croches
+    if (k % 8 === 4) for (const f of ACCORDS[(musique.pas >> 4) % 4]) note(t, f, croche * 1.6, 'square', 0.03); // accords
+    musique.prochain += croche; musique.pas++; }
+}
+// toucher un invité : il applaudit ou lève les bras, puis reprend la danse
+async function feter(v) {
+  if (v.occupe || !v.fini) return; v.occupe = true; const e = ENFANT(v.avatar), c = await clipFete(SEXE(v.avatar) + (Math.random() < 0.5 ? '_claphands_01' : '_cheer_01'), e);
+  const a = v.mx.clipAction(c); a.reset().setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.play(); v.mx.clipAction(v.danse).crossFadeTo(a, 0.25, false);
+  setTimeout(() => { const d = v.mx.clipAction(v.danse); d.reset().play(); a.crossFadeTo(d, 0.4, false); v.occupe = false; }, Math.min(3500, c.duration * 1000));
+}
+canvas.addEventListener('pointerup', (ev) => {
+  if (ecran !== 'fete' || !fete.invites.length) return;
+  souris.set((ev.clientX / innerWidth) * 2 - 1, -(ev.clientY / innerHeight) * 2 + 1); rayon.setFromCamera(souris, camera);
+  const h = rayon.intersectObjects(fete.invites.map((v) => v.o), true)[0]; if (!h) return;
+  const v = fete.invites.find((x) => { let o = h.object; while (o) { if (o === x.o) return true; o = o.parent; } return false; }); if (v) feter(v);
+});
+function monterLeSon() { fete.volume = fete.volume > 1 ? 1 : 1.45; for (const v of fete.invites) v.mx.timeScale = fete.volume; for (const m of fete.mixers) m.timeScale = fete.volume;
+  for (const it of instances.values()) if (it.mixer) it.mixer.timeScale = fete.volume; if (fete.pluie) fete.pluie.visible = true; }
 // emplacements de danse : en cercles autour du centre de la piste
 function placeDanse(i) { const cx = 1.55, cz = 4.2; if (i === 0) return [cx, cz]; const anneau = i <= 6 ? 0.75 : 1.35, n = i <= 6 ? 6 : 12, k = i <= 6 ? i - 1 : i - 7, a = (k / n) * Math.PI * 2 + (anneau > 1 ? 0.26 : 0);
   return [cx + Math.cos(a) * anneau, cz + Math.sin(a) * anneau * 0.95]; }
 const CHEMIN = [[11.5, -0.3, 3.45], [8.3, -0.3, 3.45], [7.3, 0, 3.45], [4.6, 0, 2.85], [3.1, 0, 2.95]];
 const DANSES = { f: ['f_dancing_cool', 'f_dancing_silly', 'f_dancing_affective'], m: ['m_dancing_cool', 'm_dancing_silly', 'm_dancing_aggressive'] };
 async function lancerFete() {
-  if (fete.faite) return; fete.faite = true; feteActive = true; confettis();
+  if (fete.faite) return; fete.faite = true; feteActive = true; confettis(); demarrerMusique();
+  // le buffet se pose sur la table du style choisi (table chaleureuse plus basse que la table moderne)
+  fete.charge?.then(() => { for (const q of fete.groupe.children) if (q.userData.table) q.position.y = etat.style === 'chaleureux' ? 0.745 : 0.962; });
   await chargerFete(); fete.groupe.visible = true; appliquerStyle(styleActif); visibiliteDeco();
   montrer('coupe', false); viser('fete');
   soleil.intensity = 1.2; scene.environmentIntensity = 0.35; // ambiance de soirée
@@ -456,12 +505,13 @@ async function lancerFete() {
   tous.forEach(async (a, i) => { const g = await modele(a); const o = SkeletonUtils.clone(g.scene); o.traverse((x) => { if (x.isMesh) { x.castShadow = true; x.frustumCulled = false; } });
     const mx = new THREE.AnimationMixer(o), marche = await clipFete(SEXE(a) + '_walk_neutral_01', ENFANT(a)), danse = await clipFete(DANSES[SEXE(a)][i % 3], ENFANT(a));
     const am = mx.clipAction(marche); am.play(); o.visible = false; o.position.set(...CHEMIN[0]); fete.groupe.add(o);
-    const v = { o, mx, am, danse, depart: i * 1.1, seg: 0, but: placeDanse(n + i), vitesse: (ENFANT(a) ? 0.9 : 1.15) }; fete.invites.push(v); });
+    const v = { avatar: a, o, mx, am, danse, depart: i * 1.1, seg: 0, but: placeDanse(n + i), vitesse: (ENFANT(a) ? 0.9 : 1.15) }; fete.invites.push(v); });
 }
 function avancerFete(dt) {
-  if (!feteActive) return; fete.t += dt;
+  if (!feteActive) return; fete.t += dt; avancerMusique();
+  if (fete.pluie) { const a = fete.pluie.geometry.attributes.position, v = fete.pluie.userData.vit; for (let i = 0; i < v.length; i++) { let y = a.array[i * 3 + 1] - v[i] * dt * fete.volume; a.array[i * 3] += Math.sin(fete.t * 3 + i) * 0.004; if (y < 0.02) y = 2.6; a.array[i * 3 + 1] = y; } a.needsUpdate = true; }
   for (const mx of fete.mixers) mx.update(dt);
-  fete.lumieres.forEach((l, i) => { const a = fete.t * 1.6 + i * Math.PI; l.position.set(1.55 + Math.cos(a) * 1.2, 1.4, 4.2 + Math.sin(a) * 1.2); });
+  fete.lumieres.forEach((l, i) => { const a = fete.t * 1.6 + i * Math.PI; l.position.set(1.55 + Math.cos(a) * 1.2, 1.4, 4.2 + Math.sin(a) * 1.2); l.intensity = fete.volume > 1 ? 4 + 4 * (Math.sin(fete.t * 12 + i) > 0) : 6; });
   for (const v of fete.invites) { v.mx.update(dt); if (fete.t < v.depart) continue; v.o.visible = true; if (v.fini) continue;
     const pts = CHEMIN.concat([[v.but[0], 0, v.but[1]]]); const cible = new THREE.Vector3(...pts[v.seg + 1]);
     const d = cible.clone().sub(v.o.position); const pas = v.vitesse * dt;
@@ -469,7 +519,7 @@ function avancerFete(dt) {
     else { v.o.position.addScaledVector(d.normalize(), pas); v.o.lookAt(v.o.position.x + d.x, v.o.position.y, v.o.position.z + d.z); } }
 }
 function arreterFete() {
-  if (!fete.faite) return; fete.faite = false; feteActive = false; fete.t = 0;
+  if (!fete.faite) return; fete.faite = false; feteActive = false; fete.t = 0; arreterMusique(); if (fete.volume > 1) monterLeSon();
   for (const v of fete.invites) fete.groupe.remove(v.o); fete.invites = [];
   if (fete.groupe) fete.groupe.visible = false; soleil.intensity = 3.1; scene.environmentIntensity = 0.6;
   for (const m of etat.membres) { const it = instances.get(m.id); const g = modeles[m.avatar]; if (it?.mixer) g.then((gg) => { it.mixer.stopAllAction(); if (gg.animations[0]) it.mixer.clipAction(gg.animations[0]).play(); }); }
@@ -549,7 +599,7 @@ const ARBRES = [
   { id: 'noisetier', nom: 'Noisetier', le: 'le noisetier', couleur: '#a8743f', titre: 'Le noisetier · le calme', texte: "Un coin d'ombre où l'on vient souffler. À l'automne, les noisettes se ramassent sans se presser." },
 ];
 // chaque valeur oriente vers un arbre ; la petite phrase dit ce qu'elle veut dire, concrètement, dans une maison
-const ICONES = { transmettre: '🌱', retrouver: '🍽️', recevoir: '🥂', ressourcer: '🍃', moderne: '✨', chaleureux: '🌼', bebe: '👶', bureau: '💻', sport: '🏋️', noel: '🎄', fete: '🥂', teletravail: '💻', cuisine: '🍳', jardin: '🌿', jeux: '🧸', amis: '🥂', adulte: '🧑', enfant: '🧒', senior: '👵', animal: '🐾', personne: '👤' };
+const ICONES = { son: '🔊', fort: '🔥', transmettre: '🌱', retrouver: '🍽️', recevoir: '🥂', ressourcer: '🍃', moderne: '✨', chaleureux: '🌼', bebe: '👶', bureau: '💻', sport: '🏋️', noel: '🎄', fete: '🥂', teletravail: '💻', cuisine: '🍳', jardin: '🌿', jeux: '🧸', amis: '🥂', adulte: '🧑', enfant: '🧒', senior: '👵', animal: '🐾', personne: '👤' };
 // tuiles compactes : une icône et un mot (le détail est dans aria-label)
 const tuile = (id, mot, on, aide = mot, cls = '') => `<button type="button" class="tuile ${cls}" data-id="${id}" aria-pressed="${!!on}" aria-label="${esc(aide)}"><i aria-hidden="true">${ICONES[id] || '•'}</i>${mot ? `<span>${esc(mot)}</span>` : ''}</button>`;
 const VALEURS = [
@@ -689,8 +739,9 @@ const ECRANS = {
   },
   fete: {
     vue: 'coupe', plan: 'fete', etape: '🥂',
-    intitule: () => fete.faite ? 'Que la fête commence !' : 'Vos invités arrivent…',
-    contenu: () => '',
+    intitule: () => 'Touchez un invité !',
+    contenu: () => `<div class="tuiles">${tuile('son', musique.on ? 'Musique' : 'Muet', musique.on, musique.on ? 'Couper la musique' : 'Remettre la musique')}${tuile('fort', 'Monter le son', fete.volume > 1, 'Monter le son')}</div>`,
+    clic: (id) => { if (id === 'son') { if (musique.on) arreterMusique(); else demarrerMusique(); } if (id === 'fort') monterLeSon(); },
     suite: () => fete.faite ? 'Voir ma maison' : 'Lancer la fête', pret: () => true,
   },
   noel: {
@@ -861,3 +912,4 @@ if (!QS.has('capture')) renderer.setAnimationLoop(() => {
 });
 
 demarrer().catch((e) => { const t = $('texte'); t.textContent = 'Le chargement a échoué. Rechargez la page.'; t.classList.remove('visuellement-cache'); console.error(e); });
+window.__hauteur = (x, z) => { rayon.set(new THREE.Vector3(x, 1.6, z), new THREE.Vector3(0, -1, 0)); return rayon.intersectObjects(scene.children, true).filter((h) => h.object.isMesh && !fete.groupe?.getObjectById(h.object.id)).slice(0, 4).map((h) => [h.object.name, +h.point.y.toFixed(3)]); };
