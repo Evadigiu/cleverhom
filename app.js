@@ -703,6 +703,7 @@ const CACHETTES = [
   { id: 'rateau', nom: 'le râteau', haut: 1.5, debout: true, p: [-0.42, -0.32, -0.08, 0] },            // Gardener's Rake (incg5764), appuyé contre le bardage à gauche des bottes
   { id: 'gnome', nom: 'le nain de jardin', haut: 0.55, p: [-1.0, -0.32, -0.25, -Math.PI / 2] },          // Mesh Garden Gnome (berriers), près des fleurs et de la chaise longue
   { id: 'foot', nom: 'le ballon', haut: 0.22, p: [-7.2, -0.32, 3.0, 0.6] },                            // Soccer Ball (vanart), au milieu de la pelouse
+  { id: 'parasol', nom: 'le parasol', haut: 3.0, p: [-8.4, -0.32, -1.6, -Math.PI / 2] },           // Capri D400 (Fim-Umbrellas) : toile au-dessus de la chaise longue, pied côté érables
   { id: 'balancelle', nom: 'la balancelle', long: 2.1, p: [-8.0, -0.32, 6.15, Math.PI] },              // Swing Bench (johhny_3D), dos à la haie, face au jardin
   { id: 'arrosoir', nom: "l'arrosoir", haut: 0.5, p: [-0.62, -0.32, -0.62, 0.9] },                    // Watering Can (taipl)
 ];
