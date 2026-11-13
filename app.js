@@ -31,12 +31,14 @@ scene.background = new THREE.Color('#fdece3');
 scene.fog = new THREE.Fog('#fdece3', 34, 70);
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.6;
-const ciel = new THREE.HemisphereLight('#fff0e0', '#c7b48e', 1.05); scene.add(ciel);
-const soleil = new THREE.DirectionalLight('#ffdcb5', 3.1);
-soleil.position.set(-12, 22, -4); soleil.target.position.set(2, 0, 3);
+// lumière de fin de journée : soleil chaud et rasant, ombres longues, ciel doré
+const AMBIANCE = { soleil: 4.2, env: 0.32, ciel: '#ffd9b0' };
+scene.environmentIntensity = AMBIANCE.env;
+const ciel = new THREE.HemisphereLight(AMBIANCE.ciel, '#5d6a34', 0.6); scene.add(ciel);
+const soleil = new THREE.DirectionalLight('#ffb36b', AMBIANCE.soleil);
+soleil.position.set(-10, 8, -15); soleil.target.position.set(-2, 0, 3); // derrière les érables : leurs ombres s'étirent sur la pelouse
 soleil.castShadow = true; soleil.shadow.mapSize.set(2048, 2048);
-Object.assign(soleil.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 60 });
+Object.assign(soleil.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20, near: 1, far: 80 }); soleil.shadow.radius = 3;
 soleil.shadow.bias = -0.0004; soleil.shadow.normalBias = 0.03;
 scene.add(soleil, soleil.target);
 
@@ -593,7 +595,7 @@ function avancerFete(dt) {
 function arreterFete() {
   if (!fete.faite) return; fete.faite = false; feteActive = false; fete.t = 0; fete.ref = null; arreterMusique(); if (fete.volume > 1) monterLeSon();
   for (const v of fete.invites) fete.groupe.remove(v.o); fete.invites = [];
-  if (fete.groupe) fete.groupe.visible = false; soleil.intensity = 3.1; scene.environmentIntensity = 0.6; ciel.color.set('#fff0e0');
+  if (fete.groupe) fete.groupe.visible = false; soleil.intensity = AMBIANCE.soleil; scene.environmentIntensity = AMBIANCE.env; ciel.color.set(AMBIANCE.ciel);
   for (const it of instances.values()) it.obj.traverse((x) => { if (x.isMesh) x.castShadow = true; }); soleil.shadow.autoUpdate = true;
   for (const m of etat.membres) { const it = instances.get(m.id); const g = modeles[m.avatar]; if (it?.mixer) g.then((gg) => { it.mixer.stopAllAction(); if (gg.animations[0]) it.mixer.clipAction(gg.animations[0]).play(); }); }
   appliquerStyle(styleActif); placerFamille();
@@ -770,6 +772,29 @@ function avancerCles(dt) {
     for (const o of cles.objets) if (cles.avec.has(o.id)) cles.anims.push({ o: o.o, t: 0, y0: o.o.position.y, type: 'indice' }); dessiner(); }
 }
 function arreterChasse() { cles.en_cours = false; for (const a of cles.anims) if (a.type === 'indice') a.o.position.y = a.y0; cles.anims = []; }
+
+// ---------- pelouse : une herbe dense et vivante, dessinée une fois (brins, touffes, légères bandes de tonte) ----------
+let herbeTex = null;
+function texHerbe() {
+  if (herbeTex) return herbeTex; const T = 1024, c = document.createElement('canvas'); c.width = c.height = T; const g = c.getContext('2d');
+  // chaque motif proche d'un bord est redessiné de l'autre côté : la texture se répète sans couture visible
+  const partout = (x, y, m, f) => { for (const dx of [-T, 0, T]) for (const dy of [-T, 0, T]) if (x + dx > -m && x + dx < T + m && y + dy > -m && y + dy < T + m) f(x + dx, y + dy); };
+  g.fillStyle = '#4a7a2e'; g.fillRect(0, 0, T, T);
+  for (let i = 0; i < 160; i++) { const x = Math.random() * T, y = Math.random() * T, r = 60 + Math.random() * 160, col = Math.random() < 0.5 ? 'rgba(120,150,50,0.35)' : 'rgba(30,70,25,0.4)';
+    partout(x, y, r, (px, py) => { const d = g.createRadialGradient(px, py, 0, px, py, r); d.addColorStop(0, col); d.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = d; g.fillRect(px - r, py - r, 2 * r, 2 * r); }); }
+  for (let i = 0; i < 60000; i++) { const x = Math.random() * T, y = Math.random() * T, l = 8 + Math.random() * 16, a = -Math.PI / 2 + (Math.random() - 0.5) * 0.9;
+    g.strokeStyle = `hsla(${80 + Math.random() * 30}, ${35 + Math.random() * 20}%, ${18 + Math.random() * 28}%, 0.75)`; g.lineWidth = 1.5 + Math.random() * 1.5;
+    partout(x, y, 26, (px, py) => { g.beginPath(); g.moveTo(px, py); g.lineTo(px + Math.cos(a) * l, py + Math.sin(a) * l); g.stroke(); }); }
+  for (let i = 0; i < 9000; i++) { g.fillStyle = `hsla(${70 + Math.random() * 20}, 70%, ${45 + Math.random() * 15}%, 0.5)`; g.fillRect(Math.random() * T, Math.random() * T, 1.5, 1.5); } // pointes dorées par le soleil
+  herbeTex = new THREE.CanvasTexture(c); herbeTex.colorSpace = THREE.SRGBColorSpace; herbeTex.wrapS = herbeTex.wrapT = THREE.RepeatWrapping; herbeTex.anisotropy = 8; return herbeTex;
+}
+function herbeDense(racine) {
+  racine.updateMatrixWorld(true);
+  racine.traverse((m) => { if (!m.isMesh || !m.material?.map) return; const b = new THREE.Box3().setFromObject(m), t = b.getSize(new THREE.Vector3());
+    if (t.x < 20 || t.z < 20 || t.y > 0.2 || b.max.y > -0.2) return; // le grand plan de pelouse
+    const vieux = m.material.map, mat = m.material.clone(), tx = texHerbe().clone(); tx.needsUpdate = true; tx.repeat.copy(vieux.repeat).multiplyScalar(0.9); tx.offset.copy(vieux.offset);
+    mat.map = tx; mat.color.set('#ffffff'); mat.roughness = 1; m.material = mat; m.receiveShadow = true; });
+}
 
 // ---------- vues de la maison ----------
 let vue = null;
@@ -1119,6 +1144,7 @@ async function demarrer() {
   const ATTENDU = 4.6e6; // maison, jardin et famille de départ
   for (const m of etat.membres.concat(VITRINE)) octets[m.avatar] = 0;
   const [ext, jardin] = await Promise.all(['maison-exterieur', 'jardin'].map((n) => charger(n, ATTENDU)));
+  herbeDense(ext.scene);
   coques.exterieur = ext.scene; scene.add(ext.scene, jardin.scene); amenagerJardin(jardin.scene); poserJardin(); poserMassif(); poserCachettes();
   vue = 'exterieur'; await synchroniserFamille();
   montrer('exterieur'); viser('accueil', true);
@@ -1130,6 +1156,7 @@ async function demarrer() {
   const [inte, coupe, et, etage] = await Promise.all(['interieur', 'maison-coupe', 'maison-etage', 'etage'].map((n) => charger(n)));
   // plus de garage : on retire la voiture qui y était garée
   { const voiture = []; inte.scene.traverse((m) => { if (m.isMesh && new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3()).z < -0.6) voiture.push(m); }); for (const m of voiture) m.removeFromParent(); }
+  herbeDense(coupe.scene); herbeDense(et.scene);
   decor.interieur = inte.scene; decor.etage = etage.scene; coques.coupe = coupe.scene; coques.etage = et.scene;
   scene.add(inte.scene, etage.scene, coupe.scene, et.scene);
   // cage d'escalier vue de l'étage : le modèle ne contient que les marches du haut, un fond sombre fait lire la descente
