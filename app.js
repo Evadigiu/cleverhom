@@ -247,7 +247,7 @@ const NOEL = [
   { f: 'sapin_neige', haut: 2.6, p: [[-9.4, -0.32, -0.8, 0.4], [-10.6, -0.32, 1.6, 1.3]] },
   { f: 'traineau', long: 1.7, p: [[-7.7, -0.32, 4.85, Math.PI / 2]] },
   { f: 'cadeaux1', long: 0.9, p: [[-6.8, -0.32, 5.3, 0.3]] },
-  { f: 'village', long: 0.55, p: [[-1.35, 0.9, 1.55, 0.5]] },                                  // village de Noël sur la table de la terrasse
+  { f: 'village', long: 0.55, p: [[-2.0, 0.77, 2.7, 0.5]] },                                  // village de Noël sur la table de la terrasse
   { f: 'boule_deco', haut: 0.55, p: [[-6.3, -0.32, 2.6, 0], [-6.9, -0.32, 3.3, 1], [-3.5, -0.32, 0.4, 2]] },
   { f: 'sucres', haut: 0.6, p: [[-3.1, -0.32, 0.9, 0], [-3.1, -0.32, 2.1, 0], [-3.1, -0.32, 6.6, 0], [-3.1, -0.32, -0.3, 0]] },
   { f: 'bonhomme1', haut: 1.3, p: [[-7.0, -0.32, 3.7, -2.76], [-3.7, -0.32, 6.4, -2.4]] },        // bonshommes de neige (LeionaChung, bojackart)
@@ -342,12 +342,25 @@ const JARDIN = [
   { f: 'chaise_longue', long: 1.75, p: [-3.05, -0.32, -1.3, Math.PI / 2] },   // Garden Lounge (scailman) : dossier vers la maison, pieds vers le jardin
   { f: 'jacinthe', haut: 0.55, p: [-2.25, 0.0, 3.85, 0] },                    // Hyacinth (scadl)
   { f: 'livres', haut: 0.22, p: [-3.15, -0.32, -0.55, 0.5] },                  // pile de livres (Book pile) au pied de la chaise longue, côté terrasse
+  // mobilier de terrasse comme la maison témoin : table en bois et six chaises en résine anthracite ; salon tressé chez le voisin
+  { f: 'table_jardin', long: 2.2, p: [-2.0, -0.12, 2.7, Math.PI / 2] },        // Wooden Dining Table Set (aziseptian_), chaises teintées
+  { f: 'salon_jardin', long: 2.7, p: [-1.85, -0.12, 11.4, -Math.PI / 2] },     // COMPLETE PATIO SET (shirlanne), sans la console
 ];
 // massif de fleurs (Garden Flower, ragukgr) le long du garage : côté jardin (x ≈ -1,5) puis le long du mur du fond (z ≈ -3,55)
 const GARAGE = { x0: -1.2, x1: 5.1, z0: -3.25, z1: -0.3 };
 for (let z = GARAGE.z1 - 0.15, i = 0; z > GARAGE.z0 - 0.1; z -= 0.7, i++) JARDIN.push({ f: 'fleurs', long: 0.9 + (i % 3) * 0.08, p: [GARAGE.x0 - 0.42, -0.32, z, i * 1.7] });
 for (let x = GARAGE.x0 - 0.3, i = 0; x < GARAGE.x1 + 0.1; x += 0.7, i++) JARDIN.push({ f: 'fleurs', long: 0.9 + ((i + 1) % 3) * 0.08, p: [x, -0.32, GARAGE.z0 - 0.42, i * 2.3] });
 let livres = null; // cachés pendant Noël
+// le modèle du jardin : on retire l'ancien salon de jardin (chaises pliantes, parasol) et on fait courir la haie entre les deux maisons,
+// du volume en bois jusqu'à la clôture du fond (elle était à la limite de l'ancienne maison jumelle)
+function amenagerJardin(j) {
+  const haie = [];
+  j.traverse((m) => { if (!m.isMesh) return; if (/^(Chair1_|model_tex_u1|CoffeeMug|Patio_Umbrella)/.test(m.name)) m.visible = false; if (/hedge/.test(m.name)) haie.push(m); });
+  const g = new THREE.Group(); j.add(g); for (const m of haie) g.attach(m);
+  g.position.z += 1.3; // milieu de l'écart entre les deux maisons
+  const suite = new THREE.Group(); suite.position.set(3.2, 0, 0.015); g.add(suite); // second tronçon jusqu'au volume en bois
+  for (const m of haie) if (!/GRAY/.test(m.name)) suite.add(m.clone());
+}
 function poserJardin() {
   const modeles = {}; for (const d of JARDIN) (modeles[d.f] ||= charger('deco/' + d.f)).then((g) => { const o = g.scene.clone(true); const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
     o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
@@ -985,7 +998,7 @@ async function demarrer() {
   const ATTENDU = 4.6e6; // maison, jardin et famille de départ
   for (const m of etat.membres.concat(VITRINE)) octets[m.avatar] = 0;
   const [ext, jardin] = await Promise.all(['maison-exterieur', 'jardin'].map((n) => charger(n, ATTENDU)));
-  coques.exterieur = ext.scene; scene.add(ext.scene, jardin.scene); poserJardin();
+  coques.exterieur = ext.scene; scene.add(ext.scene, jardin.scene); amenagerJardin(jardin.scene); poserJardin();
   vue = 'exterieur'; await synchroniserFamille();
   montrer('exterieur'); viser('accueil', true);
   mesures.pret = (performance.now() - DEBUT) / 1000; mesures.premier = total;
