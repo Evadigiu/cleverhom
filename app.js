@@ -399,7 +399,7 @@ function poserJardin() {
   const modeles = {}; for (const d of JARDIN) (modeles[d.f] ||= charger('deco/' + d.f)).then((g) => { const o = g.scene.clone(true); const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
     o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
-    const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(d.p[0], d.p[1], d.p[2]); pivot.rotation.y = d.p[3]; if (d.f === 'livres') livres = pivot; jardinPivots[d.f] ||= pivot;
+    const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(d.p[0], d.p[1], d.p[2]); pivot.rotation.y = d.p[3]; if (d.f === 'livres') livres = pivot; jardinPivots[d.f] ||= pivot; enregistrer(d.f, NOMS_JARDIN[d.f] || d.f, pivot);
     o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true;
       if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.25; m.material.depthWrite = true; } }); scene.add(pivot); });
 }
@@ -716,10 +716,10 @@ async function poserCachettes() {
     const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z); const pv = new THREE.Group(); pv.add(o); return pv; };
   await Promise.all(CACHETTES.map(async (d) => { const g = await charger('cles/' + d.id); const pv = poser(g.scene, d); pv.position.set(d.p[0], d.p[1], d.p[2]); pv.rotation.y = d.p[3];
     pv.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.4; m.material.depthWrite = true; } } });
-    scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); }));
+    scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); enregistrer(d.id, d.nom, pv); }));
   const ge = await charger('cles/erable');
   for (const d of ERABLES) { const pv = poser(g2(ge), { haut: 4.3 }); pv.position.set(d.p[0], d.p[1], d.p[2]); pv.rotation.y = d.p[3];
-    pv.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); }
+    pv.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); enregistrer(d.id, d.nom + ' ' + d.id.slice(-1), pv); }
   const g = await charger('cles/cle'); cles.cle = poser(g.scene, { long: 0.32 }); cles.cle.visible = false;
   cles.cle.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.emissive = new THREE.Color('#ffcf4a'); m.material.emissiveIntensity = 0.35; } }); scene.add(cles.cle);
 }
@@ -731,7 +731,7 @@ function zoneToucher(o) { if (o.userData.zone) return; const b = new THREE.Box3(
 function lancerChasse() {
   for (const [f, nom] of Object.entries(DEJA_LA)) if (jardinPivots[f] && !cles.objets.some((o) => o.id === f)) cles.objets.push({ id: f, nom, o: jardinPivots[f] });
   for (const o of cles.objets) if (!/^erable/.test(o.id)) zoneToucher(o.o); // les arbres sont déjà assez grands
-  const dispo = cles.objets.filter((o) => o.o.parent); const melange = dispo.map((o) => [Math.random(), o]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+  const dispo = cles.objets.filter((o) => o.o.parent && o.o.visible); const melange = dispo.map((o) => [Math.random(), o]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
   cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.trouvees = 0; cles.temps = 45; cles.en_cours = true; cles.fini = false; cles.indice = false; dessiner();
 }
 function message(txt) { let t = $('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
@@ -769,6 +769,61 @@ function avancerCles(dt) {
     for (const o of cles.objets) if (cles.avec.has(o.id)) cles.anims.push({ o: o.o, t: 0, y0: o.o.position.y, type: 'indice' }); dessiner(); }
 }
 function arreterChasse() { cles.en_cours = false; for (const a of cles.anims) if (a.type === 'indice') a.o.position.y = a.y0; cles.anims = []; }
+
+// ---------- mode aménagement (adresse avec ?amenagement) : déplacer les objets du jardin à la souris, au clavier ou au doigt ----------
+// Les réglages restent sur l'appareil (stockage local) ; « Copier les positions » produit un texte à transmettre pour les intégrer au jeu.
+const AMENAGEMENT = new URLSearchParams(location.search).has('amenagement');
+const NOMS_JARDIN = { chaise_jardin: 'la chaise longue', jacinthe: 'la jacinthe', livres: 'la pile de livres', table_jardin: 'la table et les chaises', salon_jardin: 'le salon du voisin' };
+const amen = { objets: new Map(), sel: null, cadre: null, glisse: null, reglages: {} };
+try { amen.reglages = JSON.parse(localStorage.getItem('amenagement') || '{}'); } catch (e) { /* stockage indisponible */ }
+function enregistrer(id, nom, o) {
+  if (amen.objets.has(id)) return; amen.objets.set(id, { id, nom, o, depart: [o.position.x, o.position.z, o.rotation.y] });
+  const r = AMENAGEMENT && amen.reglages[id]; if (r === 'retire') o.visible = false; else if (r) { o.position.x = r[0]; o.position.z = r[1]; o.rotation.y = r[2]; }
+}
+function sauverAmenagement() {
+  const R = {}; for (const a of amen.objets.values()) { const o = a.o, d = a.depart;
+    if (!o.visible) R[a.id] = 'retire'; else if (Math.abs(o.position.x - d[0]) + Math.abs(o.position.z - d[1]) + Math.abs(o.rotation.y - d[2]) > 1e-3) R[a.id] = [+o.position.x.toFixed(2), +o.position.z.toFixed(2), +o.rotation.y.toFixed(2)]; }
+  amen.reglages = R; try { localStorage.setItem('amenagement', JSON.stringify(R)); } catch (e) { /* stockage indisponible */ } majAmenagement();
+}
+function choisirObjet(a) { amen.sel = a; if (amen.cadre) { amen.cadre.removeFromParent(); amen.cadre = null; }
+  if (a) { amen.cadre = new THREE.BoxHelper(a.o, '#c4d000'); scene.add(amen.cadre); } majAmenagement(); }
+function majAmenagement() { const b = $('amen'); if (!b) return; const a = amen.sel;
+  b.querySelector('.amen-nom').textContent = a ? a.nom : 'Touchez un objet pour le sélectionner';
+  b.querySelectorAll('[data-amen]').forEach((x) => { if (['gauche', 'droite', 'retirer', 'origine'].includes(x.dataset.amen)) x.disabled = !a; });
+  b.querySelector('.amen-nb').textContent = Object.keys(amen.reglages).length + ' modification(s)'; amen.cadre?.update(); }
+function actionAmenagement(k) { const a = amen.sel;
+  if (k === 'copier') { const t = 'AMENAGEMENT ' + JSON.stringify(amen.reglages); const z = $('amen-texte'); z.hidden = false; z.value = t; z.select(); navigator.clipboard?.writeText(t).then(() => message('Positions copiées ! Collez-les dans la conversation.'), () => message('Sélectionnez le texte et copiez-le')); return; }
+  if (k === 'tout') { if (!confirm('Revenir à la disposition d’origine pour tous les objets ?')) return; for (const x of amen.objets.values()) { x.o.visible = true; x.o.position.x = x.depart[0]; x.o.position.z = x.depart[1]; x.o.rotation.y = x.depart[2]; } choisirObjet(null); sauverAmenagement(); return; }
+  if (!a) return;
+  if (k === 'gauche') a.o.rotation.y += Math.PI / 12; if (k === 'droite') a.o.rotation.y -= Math.PI / 12;
+  if (k === 'retirer') { a.o.visible = false; choisirObjet(null); message('Objet retiré (« Tout rétablir » pour le remettre)'); }
+  if (k === 'origine') { a.o.visible = true; a.o.position.x = a.depart[0]; a.o.position.z = a.depart[1]; a.o.rotation.y = a.depart[2]; }
+  sauverAmenagement(); }
+function objetSousDoigt(ev) { viserDoigt(ev); const L = [...amen.objets.values()].filter((a) => a.o.visible); const h = rayon.intersectObjects(L.map((a) => a.o), true)[0]; if (!h) return null;
+  return L.find((a) => { let o = h.object; while (o) { if (o === a.o) return true; o = o.parent; } return false; }); }
+function pointSol(ev, y) { viserDoigt(ev); const p = new THREE.Vector3(); return rayon.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -y), p) ? p : null; }
+function ouvrirAmenagement() {
+  document.body.dataset.amenagement = '1'; aller('cles'); $('question').hidden = $('panneau').hidden = true; controls.autoRotate = false;
+  const b = document.createElement('div'); b.id = 'amen'; b.className = 'amen';
+  b.innerHTML = `<div class="amen-haut"><b>Mode aménagement</b><span class="amen-nb"></span></div><div class="amen-nom"></div>
+    <div class="amen-boutons"><button data-amen="gauche" title="Tourner (R)">⟲</button><button data-amen="droite" title="Tourner (E)">⟳</button><button data-amen="origine" title="Remettre à sa place">↺</button><button data-amen="retirer" title="Retirer (Suppr)">🗑</button></div>
+    <div class="amen-boutons"><button data-amen="copier" class="amen-copier">Copier les positions</button><button data-amen="tout">Tout rétablir</button></div>
+    <p class="amen-aide">Glisser un objet : le déplacer · glisser ailleurs : tourner la vue · flèches : déplacer finement (Maj : plus vite) · R / E : tourner · Suppr : retirer</p>
+    <textarea id="amen-texte" hidden readonly></textarea>`;
+  document.body.appendChild(b); b.addEventListener('click', (ev) => { const x = ev.target.closest('[data-amen]'); if (x) actionAmenagement(x.dataset.amen); }); majAmenagement();
+  canvas.addEventListener('pointerdown', (ev) => { const a = objetSousDoigt(ev); if (!a) return; choisirObjet(a); const p = pointSol(ev, a.o.position.y); if (!p) return;
+    amen.glisse = { a, dx: a.o.position.x - p.x, dz: a.o.position.z - p.z }; controls.enabled = false; canvas.setPointerCapture?.(ev.pointerId); }, true);
+  canvas.addEventListener('pointermove', (ev) => { const g = amen.glisse; if (!g) return; const p = pointSol(ev, g.a.o.position.y); if (!p) return; g.a.o.position.x = p.x + g.dx; g.a.o.position.z = p.z + g.dz; amen.cadre?.update(); });
+  addEventListener('pointerup', () => { if (!amen.glisse) return; amen.glisse = null; controls.enabled = true; sauverAmenagement(); });
+  addEventListener('keydown', (ev) => { const a = amen.sel; if (!a || ev.target.tagName === 'TEXTAREA') return; const pas = ev.shiftKey ? 0.5 : 0.1; let fait = true;
+    // flèches dans le repère de l'écran : haut = s'éloigner de la caméra
+    const av = new THREE.Vector3(); camera.getWorldDirection(av); av.y = 0; av.normalize(); const dr = new THREE.Vector3(-av.z, 0, av.x);
+    if (ev.key === 'ArrowUp') a.o.position.addScaledVector(av, pas); else if (ev.key === 'ArrowDown') a.o.position.addScaledVector(av, -pas);
+    else if (ev.key === 'ArrowRight') a.o.position.addScaledVector(dr, pas); else if (ev.key === 'ArrowLeft') a.o.position.addScaledVector(dr, -pas);
+    else if (ev.key === 'r' || ev.key === 'R') a.o.rotation.y += Math.PI / 12; else if (ev.key === 'e' || ev.key === 'E') a.o.rotation.y -= Math.PI / 12;
+    else if (ev.key === 'Delete' || ev.key === 'Backspace') actionAmenagement('retirer'); else if (ev.key === 'Escape') choisirObjet(null); else fait = false;
+    if (fait) { ev.preventDefault(); amen.cadre?.update(); sauverAmenagement(); } });
+}
 
 // ---------- vues de la maison ----------
 let vue = null;
@@ -1138,6 +1193,7 @@ async function demarrer() {
   if (!arbres.pommier) chargerArbre('pommier');
   mesures.complet = (performance.now() - DEBUT) / 1000; mesures.tout = total;
 }
+if (AMENAGEMENT) { const ouvrir = () => { $('chargement')?.classList.add('fini'); ouvrirAmenagement(); }; const att = setInterval(() => { if (coques.exterieur) { clearInterval(att); setTimeout(ouvrir, 300); } }, 300); }
 
 // ---------- boucle ----------
 const panneauMesures = $('mesures'); if (QS.has('mesures')) panneauMesures.hidden = false;
@@ -1186,3 +1242,4 @@ if (!QS.has('capture')) renderer.setAnimationLoop(() => {
 
 demarrer().catch((e) => { const t = $('texte'); t.textContent = 'Le chargement a échoué. Rechargez la page.'; t.classList.remove('visuellement-cache'); console.error(e); });
 window.__info = () => { let tex = 0; const vu = new Set(); scene.traverse((o) => { if (!o.visible || !o.material) return; for (const m of [].concat(o.material)) for (const k of ['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap']) { const t = m[k]; if (t?.image && !vu.has(t)) { vu.add(t); tex += (t.image.width || 0) * (t.image.height || 0) * 4 * 1.33; } } }); return { appels: renderer.info.render.calls, triangles: renderer.info.render.triangles, programmes: renderer.info.programs.length, textures: renderer.info.memory.textures, texturesVisiblesMo: Math.round(tex / 1e6) }; };
+window.__ecran = (id) => { const a = amen.objets.get(id); if (!a) return null; const v = new THREE.Box3().setFromObject(a.o).getCenter(new THREE.Vector3()).project(camera); const r = canvas.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height, a.o.position.x, a.o.position.z]; };
