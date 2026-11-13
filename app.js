@@ -30,15 +30,15 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const ECHELLE = 0.9;
 const scene = new THREE.Scene();
 // ciel de fin de journée : bleu profond en haut, dégradé vers l'orangé à l'horizon, halo du côté du soleil couchant
-scene.background = new THREE.Color('#ffd194');
-scene.fog = new THREE.Fog('#ffd194', 55, 150); // même teinte que le bas du ciel : l'horizon se fond sans trait
+scene.background = new THREE.Color('#efd4b8');
+scene.fog = new THREE.Fog('#efd4b8', 45, 150); // même teinte que le bas du ciel : l'horizon se fond sans trait
 const cielDome = new THREE.Mesh(new THREE.SphereGeometry(160, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false,
   uniforms: { soleilDir: { value: new THREE.Vector3(-10, 8, -15).normalize() } },
   vertexShader: 'varying vec3 vd; void main() { vd = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: `uniform vec3 soleilDir; varying vec3 vd;
     void main() { float h = clamp(vd.y, -0.1, 1.0);
-      vec3 haut = vec3(0.30, 0.50, 0.82), milieu = vec3(0.55, 0.70, 0.90), bas = vec3(1.0, 0.82, 0.58);
-      vec3 c = h < 0.06 ? mix(bas, milieu, smoothstep(-0.01, 0.06, h)) : mix(milieu, haut, smoothstep(0.06, 0.45, h));
+      vec3 haut = vec3(0.36, 0.53, 0.80), milieu = vec3(0.86, 0.78, 0.76), bas = vec3(0.94, 0.83, 0.72);
+      vec3 c = h < 0.12 ? mix(bas, milieu, smoothstep(0.0, 0.12, h)) : mix(milieu, haut, smoothstep(0.12, 0.5, h));
       float s = max(dot(normalize(vd), soleilDir), 0.0); c += vec3(1.0, 0.55, 0.2) * (pow(s, 6.0) * 0.45 + pow(s, 60.0) * 0.6);
       gl_FragColor = vec4(c, 1.0); }` }));
 cielDome.renderOrder = -1; cielDome.frustumCulled = false; scene.add(cielDome);
