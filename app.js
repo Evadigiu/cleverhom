@@ -728,7 +728,7 @@ const CACHETTES = [
   { id: 'arrosoir', nom: "l'arrosoir", haut: 0.5, p: [-0.8, -0.32, -1.1, 0.9] },                    // Watering Can (taipl)
 ];
 // érables alignés le long de la bordure gauche du jardin (Maple tree, atrodler)
-const ERABLES = [7.42, 5.54, 3.66, 1.78, -0.1, -1.98, -3.86, -5.74, -7.62, -9.5].map((x, i) => ({ id: 'erable' + (i + 1), nom: "l'érable", p: [x, -0.32, -4.3, i * 1.3] })); // dix érables, 2 m à gauche du jardin, de la clôture du fond jusqu'au bout de la maison côté rue
+const ERABLES = [7.42, 3.66, -0.1, -3.86, -7.62].map((x, i) => ({ id: 'erable' + (i + 1), nom: "l'érable", p: [x, -0.32, -4.3, i * 1.3] })); // cinq érables espacés (un sur deux), 2 m à gauche du jardin, de la clôture du fond jusqu'au bout de la maison côté rue
 const DEJA_LA = { chaise_jardin: 'la chaise longue', livres: 'la pile de livres', jacinthe: 'la jacinthe', table_jardin: 'la table' };
 const cles = { objets: [], cle: null, avec: new Set(), trouvees: 0, temps: 45, en_cours: false, fini: false, anims: [] };
 const g2 = (g) => g.scene.clone(true);
