@@ -967,7 +967,7 @@ const ECRANS = {
     contenu: () => `<div class="tuiles">${PIECE.map(([id, l]) => tuile(id, { bebe: 'Bébé', bureau: 'Bureau', sport: 'Sport' }[id], etat.piece === id, l)).join('')}</div>`
       + `<div class="compteur"><p>🛏️ Chambres idéales</p><div><button type="button" data-id="moins" aria-label="Une chambre de moins">−</button><output>${etat.chambres}</output><button type="button" data-id="plus" aria-label="Une chambre de plus">+</button></div></div>`,
     clic: (id) => { if (id === 'moins') etat.chambres = Math.max(1, etat.chambres - 1); else if (id === 'plus') etat.chambres = Math.min(6, etat.chambres + 1); else { etat.piece = id; zone9.visible = false; amenagerPiece(id); } },
-    suite: () => etat.piece ? 'Choisir une aventure' : 'Choisissez l’usage de la pièce', pret: () => !!etat.piece,
+    suite: () => etat.piece ? 'Chercher les clés' : 'Choisissez l’usage de la pièce', pret: () => !!etat.piece,
   },
   aventures: {
     vue: 'exterieur', plan: 'aventures', etape: '4/4',
