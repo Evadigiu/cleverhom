@@ -58,6 +58,7 @@ const PLANS = {
   aventures: { pos: [-22, 9, -6], cible: [1.0, -3.2, 3.2], fov: 46 },
   noel: { pos: [-12.2, 2.3, 7.2], cible: [-6.4, 0.25, 3.1], fov: 46 },
   noelDehors: { pos: [-15, 4.0, 6.8], cible: [-2.2, 1.1, 2.0], fov: 50 },
+  fete: { pos: [-3.8, 9.6, 9.8], cible: [3.4, 0.2, 3.4], fov: 52 },
   noelMaison: { pos: [10.4, 10.6, -4.5], cible: [5.0, 0.8, 2.0], fov: 48 }, // centré sur le joueur dans la maison
   fiche: { pos: [-20, 12, -8], cible: [0.5, -5.5, 3.0], fov: 46 },
 };
@@ -138,6 +139,7 @@ async function synchroniserFamille() {
   placerFamille();
 }
 function placerFamille() {
+  if (feteActive) return;
   const P = PLACES[VUES[vue]?.famille || 'exterieur']; let g = 0, b = 0;
   for (const m of familleAffichee()) { const it = instances.get(m.id); if (!it) continue;
     const animal = !!ANIMAUX[m.avatar]; const pl = animal ? P.betes[b++] : P.gens[g++];
@@ -204,7 +206,8 @@ function mursBlancs(oui) {
       const o = mat.userData.mapOrigine; if (!o) continue; const b = sansSauge(o); if (!b) continue; mat.map = oui ? b : o; } });
 }
 const NOEL_CACHE = /^(Stool_02_Wood_0|Flower-Vase|Phalaenopsis)/;
-const cache = (nom, m) => { if (nom !== 'commun' && noelActif && NOEL_CACHE.test(m.name)) return true; const c = DECO[nom]?.cacher; return !!c && (typeof c === 'function' ? c(m) : c.test(m.name)); };
+const FETE_CACHE = /^Material2/; // le salon (canapé, tapis, tables basses) laisse la place à la piste
+const cache = (nom, m) => { if (nom !== 'commun' && noelActif && NOEL_CACHE.test(m.name)) return true; if (nom !== 'commun' && feteActive && FETE_CACHE.test(m.name)) return true; const c = DECO[nom]?.cacher; return !!c && (typeof c === 'function' ? c(m) : c.test(m.name)); };
 async function poserDeco(nom) {
   if (decoPosee[nom]) return decoPosee[nom]; const D = DECO[nom];
   const groupe = new THREE.Group(); decoPosee[nom] = groupe; groupe.visible = false; scene.add(groupe);
@@ -219,7 +222,7 @@ async function poserDeco(nom) {
 // meubles du rez-de-chaussée visibles quand l'intérieur l'est, ceux de l'étage quand l'étage l'est
 function visibiliteDeco() {
   for (const [k, g] of Object.entries(decoPosee)) { g.visible = k === 'commun' || k === styleActif;
-    for (const p of g.children) p.visible = (p.userData.etage ? !!decor.etage?.visible : !!decor.interieur?.visible) && !(noelActif && /^(table|tulipes)$/.test(p.userData.f)); }
+    for (const p of g.children) p.visible = (p.userData.etage ? !!decor.etage?.visible : !!decor.interieur?.visible) && !(noelActif && /^(table|tulipes)$/.test(p.userData.f)) && !(feteActive && /^(canape|tapis|fauteuil|tablebasse|lampe)$/.test(p.userData.f)); }
 }
 async function appliquerStyle(nom) {
   styleActif = nom;
@@ -393,6 +396,84 @@ async function amenagerPiece(id) {
     const pivot = new THREE.Group(); pivot.add(o); o.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3());
     o.position.set(-c.x, -b.min.y, -c.z); pivot.position.set(p.x, p.y, p.z); pivot.rotation.y = p.r; groupe.add(pivot); }));
   groupe.visible = (etat.piece || 'bureau') === id && !!decor.etage?.visible;
+}
+
+// ---------- l'aventure de la crémaillère ----------
+// tous les personnages du jeu arrivent par la porte d'entrée à la queue leu leu, puis dansent dans le salon devenu piste
+let feteActive = false;
+const FETE = [
+  { f: 'piste', long: 2.5, p: [[1.55, 0.02, 4.2, 0]] },                                 // Animated Dance Floor (wwwuengy)
+  { f: 'boule', haut: 1.0, p: [[1.55, 1.75, 4.2, 0]] },                                  // Animated Disco Ball (GrafilArtwork), suspendue au-dessus de la piste
+  { f: 'guirlande', long: 3.0, p: [[1.55, 2.25, 3.05, 0], [1.55, 2.25, 4.2, 0], [1.55, 2.25, 5.4, 0]], brille: '#ffe9a8' }, // Simple String Lights (TrixtheProtogen)
+  { f: 'spot', haut: 0.5, p: [[0.25, 0.0, 2.95, 0], [2.95, 0.0, 5.5, 0]], vise: [1.55, 2.2, 4.2] }, // BEAM LIGHT (eventdesignws), braqués sur la boule
+  { f: 'enceinte', long: 0.55, p: [[2.85, 0.0, 3.1, -2.3]] },                            // Bluetooth music boombox (dani-satellite)
+];
+const fete = { groupe: null, charge: null, invites: [], mixers: [], clips: {}, lumieres: [], t: 0, faite: false };
+const SEXE = (a) => /^(f|fb|fs|fille)/.test(a) ? 'f' : 'm';
+const ENFANT = (a) => /^(fille|garcon)/.test(a);
+async function clipFete(nom, enfant) {
+  const cle = nom + (enfant ? '_e' : '');
+  return (fete.clips[cle] ||= fetch('assets/anims/' + nom + '.json').then((r) => r.json()).then((j) => { let c = THREE.AnimationClip.parse(j); c.userData = { vitesse: j.vitesse };
+    // les enfants ont un squelette « Bip02 » : rotations seulement, pistes renommées
+    if (enfant) { c = c.clone(); c.tracks = c.tracks.filter((t) => t.name.endsWith('.quaternion')).map((t) => { const k = t.clone(); k.name = k.name.replace(/^Bip01/, 'Bip02'); return k; }); c.userData = { vitesse: j.vitesse }; }
+    return c; }));
+}
+function chargerFete() {
+  if (fete.charge) return fete.charge;
+  fete.groupe = new THREE.Group(); fete.groupe.visible = false; scene.add(fete.groupe);
+  fete.charge = Promise.all(FETE.map(async (d) => { const g = await charger('fete/' + d.f);
+    for (const [x, y, z, r] of d.p) { const o = SkeletonUtils.clone(g.scene); const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+      o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
+      const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
+      const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(x, y, z); pivot.rotation.y = r;
+      if (d.vise) { // le faisceau du modèle part vers +x/+y : on l'oriente vers la boule
+        const dir = new THREE.Vector3(...d.vise).sub(pivot.position).normalize(); pivot.quaternion.setFromUnitVectors(new THREE.Vector3(1, 1, 0).normalize(), dir); }
+      o.traverse((m) => { if (!m.isMesh) return; m.castShadow = false; m.frustumCulled = false; if (d.brille) { m.material = m.material.clone(); m.material.emissive = new THREE.Color(d.brille); m.material.emissiveIntensity = 0.9; } });
+      if (g.animations.length) { const mx = new THREE.AnimationMixer(o); for (const a of g.animations) mx.clipAction(a).play(); fete.mixers.push(mx); }
+      fete.groupe.add(pivot); } }));
+  // deux lumières de couleur qui tournent autour de la boule
+  for (const c of ['#ff3ea5', '#3ec8ff']) { const l = new THREE.PointLight(c, 0, 6, 1.5); fete.groupe.add(l); fete.lumieres.push(l); }
+  return fete.charge;
+}
+// emplacements de danse : en cercles autour du centre de la piste
+function placeDanse(i) { const cx = 1.55, cz = 4.2; if (i === 0) return [cx, cz]; const anneau = i <= 6 ? 0.75 : 1.35, n = i <= 6 ? 6 : 12, k = i <= 6 ? i - 1 : i - 7, a = (k / n) * Math.PI * 2 + (anneau > 1 ? 0.26 : 0);
+  return [cx + Math.cos(a) * anneau, cz + Math.sin(a) * anneau * 0.95]; }
+const CHEMIN = [[11.5, -0.3, 3.45], [8.3, -0.3, 3.45], [7.3, 0, 3.45], [4.6, 0, 2.85], [3.1, 0, 2.95]];
+const DANSES = { f: ['f_dancing_cool', 'f_dancing_silly', 'f_dancing_affective'], m: ['m_dancing_cool', 'm_dancing_silly', 'm_dancing_aggressive'] };
+async function lancerFete() {
+  if (fete.faite) return; fete.faite = true; feteActive = true; confettis();
+  await chargerFete(); fete.groupe.visible = true; appliquerStyle(styleActif); visibiliteDeco();
+  montrer('coupe', false); viser('fete');
+  soleil.intensity = 1.2; scene.environmentIntensity = 0.35; // ambiance de soirée
+  for (const l of fete.lumieres) l.intensity = 6;
+  // la famille du joueur danse déjà au centre
+  let n = 0;
+  for (const m of etat.membres) { const it = instances.get(m.id); if (!it) continue; const [x, z] = placeDanse(n++); it.obj.visible = true; it.obj.position.set(x, 0, z); it.obj.lookAt(1.55, 0, 4.2);
+    if (it.mixer && !ANIMAUX[m.avatar]) { const c = await clipFete(DANSES[SEXE(m.avatar)][n % 3], ENFANT(m.avatar)); it.mixer.stopAllAction(); it.mixer.clipAction(c).play(); } }
+  // les invités : tous les autres personnages, qui entrent l'un après l'autre
+  const deja = new Set(etat.membres.map((m) => baseAvatar(m.avatar)));
+  const tous = [...CATALOGUE.adulte, ...CATALOGUE.senior, ...CATALOGUE.enfant].filter((a, i, l) => l.indexOf(a) === i && !deja.has(a));
+  tous.forEach(async (a, i) => { const g = await modele(a); const o = SkeletonUtils.clone(g.scene); o.traverse((x) => { if (x.isMesh) { x.castShadow = true; x.frustumCulled = false; } });
+    const mx = new THREE.AnimationMixer(o), marche = await clipFete(SEXE(a) + '_walk_neutral_01', ENFANT(a)), danse = await clipFete(DANSES[SEXE(a)][i % 3], ENFANT(a));
+    const am = mx.clipAction(marche); am.play(); o.visible = false; o.position.set(...CHEMIN[0]); fete.groupe.add(o);
+    const v = { o, mx, am, danse, depart: i * 1.1, seg: 0, but: placeDanse(n + i), vitesse: (ENFANT(a) ? 0.9 : 1.15) }; fete.invites.push(v); });
+}
+function avancerFete(dt) {
+  if (!feteActive) return; fete.t += dt;
+  for (const mx of fete.mixers) mx.update(dt);
+  fete.lumieres.forEach((l, i) => { const a = fete.t * 1.6 + i * Math.PI; l.position.set(1.55 + Math.cos(a) * 1.2, 1.4, 4.2 + Math.sin(a) * 1.2); });
+  for (const v of fete.invites) { v.mx.update(dt); if (fete.t < v.depart) continue; v.o.visible = true; if (v.fini) continue;
+    const pts = CHEMIN.concat([[v.but[0], 0, v.but[1]]]); const cible = new THREE.Vector3(...pts[v.seg + 1]);
+    const d = cible.clone().sub(v.o.position); const pas = v.vitesse * dt;
+    if (d.length() <= pas) { v.o.position.copy(cible); v.seg++; if (v.seg >= pts.length - 1) { v.fini = true; v.o.lookAt(1.55, 0, 4.2); const ad = v.mx.clipAction(v.danse); ad.reset().play(); v.am.crossFadeTo(ad, 0.4, false); } }
+    else { v.o.position.addScaledVector(d.normalize(), pas); v.o.lookAt(v.o.position.x + d.x, v.o.position.y, v.o.position.z + d.z); } }
+}
+function arreterFete() {
+  if (!fete.faite) return; fete.faite = false; feteActive = false; fete.t = 0;
+  for (const v of fete.invites) fete.groupe.remove(v.o); fete.invites = [];
+  if (fete.groupe) fete.groupe.visible = false; soleil.intensity = 3.1; scene.environmentIntensity = 0.6;
+  for (const m of etat.membres) { const it = instances.get(m.id); const g = modeles[m.avatar]; if (it?.mixer) g.then((gg) => { it.mixer.stopAllAction(); if (gg.animations[0]) it.mixer.clipAction(gg.animations[0]).play(); }); }
+  appliquerStyle(styleActif); placerFamille();
 }
 
 // ---------- vues de la maison ----------
@@ -602,9 +683,15 @@ const ECRANS = {
     vue: 'exterieur', plan: 'aventures', etape: '4/4',
     intitule: 'Votre aventure ?',
     contenu: () => `<div class="tuiles grandes">${AVENTURES.map(([id, t]) => tuile(id, '', etat.aventure === id, t)).join('')}</div>`
-      + (etat.aventure && etat.aventure !== 'noel' ? `<p class="message">Bientôt disponible</p>` : ''),
-    clic: (id) => { etat.aventure = id; if (id === 'noel') { chargerNoel(); montrerBoule(); } },
-    suite: () => etat.aventure === 'noel' ? 'Commencer l’aventure' : 'Voir ma maison', pret: () => !!etat.aventure,
+      + (etat.aventure === 'bebe' ? `<p class="message">Bientôt disponible</p>` : ''),
+    clic: (id) => { etat.aventure = id; if (id === 'noel') { chargerNoel(); montrerBoule(); } if (id === 'fete') chargerFete(); },
+    suite: () => etat.aventure === 'noel' || etat.aventure === 'fete' ? 'Commencer l’aventure' : 'Voir ma maison', pret: () => !!etat.aventure,
+  },
+  fete: {
+    vue: 'coupe', plan: 'fete', etape: '🥂',
+    intitule: () => fete.faite ? 'Que la fête commence !' : 'Vos invités arrivent…',
+    contenu: () => '',
+    suite: () => fete.faite ? 'Voir ma maison' : 'Lancer la fête', pret: () => true,
   },
   noel: {
     vue: 'exterieur', plan: 'noel', etape: '🎄',
@@ -632,6 +719,7 @@ let ecran = 'accueil';
 function aller(nom) {
   if (document.body.dataset.rituel) rituel(null);
   if (noel.fait && nom !== 'noel' && nom !== 'fiche') cacherNoel();
+  if (fete.faite && nom !== 'fete' && nom !== 'fiche') arreterFete();
   if (nom === 'fiche' && noel.groupe) for (const p of noel.groupe.children) if (p.userData.facade) p.visible = true;
   ecran = nom; document.body.dataset.ecran = nom; synchroniserFamille();
   if (nom === 'noel') montrerBoule(); else if (noel.boule) noel.boule.visible = false;
@@ -698,10 +786,12 @@ $('suite').addEventListener('click', () => {
     if (!moi.prenom.trim()) { etat.membre = moi.id; etat.prenomManquant = true; dessiner(); const c = $('prenom-m'); c.classList.add('manquant'); c.focus(); return; }
     etat.prenomManquant = false; }
   if (ecran === 'aventures' && etat.aventure === 'noel') { aller('noel'); return; }
+  if (ecran === 'aventures' && etat.aventure === 'fete') { aller('fete'); lancerFete().then(dessiner); return; }
+  if (ecran === 'fete') { aller('fiche'); return; }
   if (ecran === 'noel') { if (!noel.fait) { ouvrirBoule(); return; } if (!noel.dedans) { vueNoel(true); dessiner(); return; } aller('fiche'); return; }
   aller(ORDRE[ORDRE.indexOf(ecran) + 1]);
 });
-$('retour').addEventListener('click', () => aller(ecran === 'noel' ? 'aventures' : ecran === 'fiche' && noel.fait ? 'noel' : ORDRE[Math.max(0, ORDRE.indexOf(ecran) - 1)]));
+$('retour').addEventListener('click', () => aller(ecran === 'noel' || ecran === 'fete' ? 'aventures' : ecran === 'fiche' && noel.fait ? 'noel' : ORDRE[Math.max(0, ORDRE.indexOf(ecran) - 1)]));
 $('jouer').addEventListener('click', () => { aller('arbre'); if (!etat.introVue) { etat.introVue = true; rituel('intro'); } });
 
 // ---------- démarrage ----------
@@ -734,7 +824,7 @@ let images = 0, t0 = performance.now(), lent = 0;
 const horloge = new THREE.Clock(); const tmp = new THREE.Vector3();
 function image(dt) {
   for (const mx of mixers) mx.update(dt);
-  avancerTrajet(dt); avancerCroissance(dt); avancerNoel(dt); controls.update(); renderer.render(scene, camera);
+  avancerTrajet(dt); avancerCroissance(dt); avancerNoel(dt); avancerFete(dt); controls.update(); renderer.render(scene, camera);
   const b = ECRANS[ecran]?.bulle; const bulle = $('bulle');
   if (b && !trajet) { tmp.set(...b.p).project(camera); bulle.hidden = tmp.z > 1; bulle.textContent = b.t; bulle.style.left = ((tmp.x + 1) / 2) * innerWidth + 'px'; bulle.style.top = ((1 - tmp.y) / 2) * innerHeight + 'px';
     // pas de bulle par-dessus le bandeau ou le panneau (petits écrans) : elle cacherait les boutons
@@ -752,6 +842,7 @@ window.__perf = () => ({ triangles: renderer.info.render.triangles, appels: rend
 window.__tuile = (W, H, x, y, w, h) => { renderer.setPixelRatio(1); renderer.setSize(w, h, false); canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
   camera.aspect = W / H; camera.setViewOffset(W, H, x, y, w, h); camera.updateProjectionMatrix(); renderer.render(scene, camera); };
 window.__bureau = () => { const L = []; decor.etage?.traverse((m) => { if (/bureau/.test(m.name)) L.push(m.type + ':' + m.name + ':' + m.visible); }); return L.join(' | ') + ' // posés ' + Object.keys(piecePosee).join(','); };
+window.__fete = (t = 12) => { for (let i = 0; i < t * 10; i++) avancerFete(0.1); };
 window.__aller = (n) => { aller(n); if (trajet) { trajet.t = 1; avancerTrajet(0); } };
 window.__rituel = async (n, t = 1) => { if (n === 'plaque') { await ceremonie(); if (trajet) { trajet.t = 1; avancerTrajet(0); } if (croissance) { croissance.t = 0; avancerCroissance(2.6 * t); } } else rituel(n); };
 window.__famille = () => [...instances.entries()].map(([id, it]) => [id, it.avatar, it.obj.visible, it.obj.position.toArray().map((v) => +v.toFixed(2)), new THREE.Box3().setFromObject(it.obj).getSize(new THREE.Vector3()).toArray().map((v) => +v.toFixed(2))]);
