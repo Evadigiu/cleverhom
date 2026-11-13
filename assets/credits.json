@@ -631,12 +631,6 @@
    "lien": "https://sketchfab.com/3d-models/2f2283cf4b5946488d05e744c86826ee"
   },
   {
-   "nom": "Wheelbarrow",
-   "auteur": "Eleanie",
-   "licence": "CC Attribution",
-   "lien": "https://sketchfab.com/3d-models/293c5eb89d324348903ed572f65b5e3f"
-  },
-  {
    "nom": "Bird house",
    "auteur": "alban",
    "licence": "CC Attribution",
@@ -668,7 +662,6 @@
   "planter_box_02",
   "potted_plant_01",
   "rubber_boots",
-  "football",
   "stone_fire_pit"
  ],
  "rocketbox": "Microsoft Rocketbox Avatar Library (licence MIT)"
