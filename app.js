@@ -177,7 +177,7 @@ const DECO = {
       { f: 'lampe', haut: 1.05, x: 0.35, y: 0.034, z: 5.3, r: 0 },               // lampe Margot verte (Athezza, Pyramidas) à la place du lampadaire boule blanc
       { f: 'table', long: 1.23, x: 2.05, y: 0.0, z: 1.55, r: 0 },                 // table et chaises (Table & Chair Sets, everycraft) sous la suspension
       { f: 'tulipes', haut: 0.38, x: 2.05, y: 0.745, z: 1.55, r: 0.4 },           // bouquet de tulipes (alban) au centre de la table
-      { f: 'fauteuil_parents', haut: 0.8, x: 2.6, y: 2.9, z: 0.5, r: -2.42, etage: true }, // chambre parentale : fauteuil (Clotilde Ngoma, Maride) dans l'angle, tourné vers le lit
+      { f: 'fauteuil_parents', haut: 0.8, x: 2.82, y: 2.9, z: 0.36, r: -2.42, etage: true }, // chambre parentale : fauteuil (Clotilde Ngoma, Maride) dans l'angle, tourné vers le lit
     ],
   },
 };
@@ -361,7 +361,15 @@ const PIECES = {
     { f: 'bebe_pack', long: 0.7, x: 5.55, y: 2.9, z: 1.55, r: 1.2, etage: true },                       // Baby Pack (liebherr996litronic) : couches, peluches, cubes
     { f: 'bebe_draisienne', long: 0.55, x: 6.1, y: 2.9, z: 0.95, r: 0.7, etage: true },                  // XJD Baby Balance Bike (1021.akshays)
   ] },
-  sport: { garder: null, poser: [] },
+  sport: { garder: null, poser: [
+    { f: 'sport_presse', long: 1.9, x: 6.2, y: 2.9, z: 2.0, r: 0, etage: true },                        // Leg Press Machine (silentsheri), le long du mur du fond
+    { f: 'sport_papillon', haut: 1.95, x: 7.15, y: 2.9, z: 0.6, r: Math.PI / 2, etage: true },           // Butterfly Machine (Chenchanchong), face à la pièce
+    { f: 'sport_disque', long: 0.4, x: 5.3, y: 2.9, z: 1.1, r: 0, etage: true },                         // Balance Disc (Sahil_3D)
+    { f: 'sport_barre', long: 0.45, x: 5.7, y: 2.9, z: 0.35, r: 0.3, etage: true },                      // haltère (Average3DmodelEnjoyer)
+    { f: 'sport_haltere', long: 0.33, x: 6.1, y: 2.9, z: 0.45, r: -0.4, etage: true },                   // Dumble (Sahil_3D)
+    { f: 'sport_kettlebell', haut: 0.28, x: 4.75, y: 2.9, z: 0.4, r: 0.6, etage: true },                 // Spart Weight (Sahil_3D)
+    { f: 'sport_serviettes', long: 0.45, x: 4.7, y: 2.9, z: 2.3, r: 0, etage: true },                    // Towel (Chenchanchong)
+  ] },
 };
 const piecePosee = {};
 const PIECE9 = { x0: 4.34, x1: 7.58, z0: 0.05, z1: 2.66, y0: 2.9, y1: Number(QS.get('mur') || 4.2) };
@@ -525,15 +533,13 @@ const ECRANS = {
     vue: 'exterieur', famille: false, plan: 'arbre', etape: 'Étape 1 sur 4 · Votre arbre', pastille: 'Pousse en Alsace',
     // avant le choix : la terre est déjà retournée et une bulle montre où l'arbre sera planté
     get bulle() { return etat.arbre ? null : { p: [terre.position.x, 0.25, terre.position.z], t: 'Votre arbre ici' }; },
-    intitule: 'Avant d’entrer, qu’est-ce qui compte le plus pour vous ?',
-    puces: () => VALEURS.map(([id, l, , sous]) => ({ id, l, sous, on: etat.valeur === id })),
-    puce: (id) => { etat.valeur = id; choisirArbre(VALEURS.find((v) => v[0] === id)[2]); },
+    intitule: 'Qu’est-ce qui compte le plus pour vous ?',
+    // un seul panneau, en bas : les intentions ; l'arbre et sa description apparaissent une fois l'intention choisie
     contenu: () => { const a = ARBRES.find((x) => x.id === etat.arbre);
-      return `<div class="grille quatre">${ARBRES.map((x) => `<button type="button" class="choix arbre" data-id="${x.id}" aria-pressed="${etat.arbre === x.id}"><i style="background:${x.couleur}"></i><b>${x.nom}</b></button>`).join('')}</div>`
-        + (a ? `<div class="encart">${(() => { const v = VALEURS.find((x) => x[0] === etat.valeur && x[2] === a.id); return v ? `<p class="etiquette">Pour ${v[1].toLowerCase()}</p>` : ''; })()}<p class="titre-panneau">${a.titre}</p><p class="sous">${a.texte}</p></div>`
-          : `<p class="sous">Chaque réponse vous oriente vers un arbre. Vous restez libre de choisir celui qui vous plaît.</p>`); },
-    clic: (id) => choisirArbre(id),
-    suite: () => etat.arbre ? 'Planter ' + ARBRES.find((x) => x.id === etat.arbre).le : 'Choisissez un arbre', pret: () => !!etat.arbre,
+      return `<div class="valeurs">${VALEURS.map(([id, l, , sous]) => `<button type="button" class="puce valeur" data-id="${id}" aria-pressed="${etat.valeur === id}"><b>${esc(l)}</b><span>${esc(sous)}</span></button>`).join('')}</div>`
+        + (a ? `<div class="encart"><p class="titre-panneau">${a.titre}</p><p class="sous">${a.texte}</p></div>` : ''); },
+    clic: (id) => { const v = VALEURS.find((x) => x[0] === id); if (!v) return; etat.valeur = id; choisirArbre(v[2]); },
+    suite: () => etat.arbre ? 'Planter ' + ARBRES.find((x) => x.id === etat.arbre).le : 'Choisissez ce qui compte', pret: () => !!etat.arbre,
   },
   famille: {
     vue: 'exterieur', plan: 'famille', etape: 'Étape 2 sur 4 · Votre famille',

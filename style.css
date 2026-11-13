@@ -62,7 +62,7 @@ body:not([data-ecran="accueil"]) .seulement-accueil { display: none; }
 .puce { min-height: 36px; border-radius: 999px; padding: 6px 13px; font: 700 14px var(--police); border: 1.5px solid #e8ddd5; background: #fff; color: var(--texte); cursor: pointer; }
 .puce[aria-pressed="true"] { background: var(--texte); color: #fff; border-color: var(--texte); }
 /* valeurs de l'étape arbre : quatre cartes avec une petite phrase */
-.puces:has(.valeur) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.valeurs, .puces:has(.valeur) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .puce.valeur { border-radius: 16px; padding: 8px 11px 9px; text-align: left; display: flex; flex-direction: column; gap: 2px; }
 .puce.valeur b { font-size: 15px; }
 .puce.valeur span { font-weight: 400; font-size: 13px; line-height: 1.25; color: var(--gris); }
@@ -167,3 +167,6 @@ input.manquant { border-color: #d9302c !important; box-shadow: 0 0 0 3px rgba(21
 /* le bouton de suite reste toujours visible en bas du panneau, même quand son contenu défile (petits écrans, clavier ouvert) */
 .panneau { max-height: 58dvh; }
 .panneau > .suite { position: sticky; bottom: 0; flex-shrink: 0; z-index: 1; box-shadow: 0 -14px 14px 2px #fff; }
+
+/* étape arbre : bandeau du haut réduit au titre */
+body[data-ecran="arbre"] .question .intitule { margin-bottom: 0; }
