@@ -396,9 +396,9 @@ function amenagerJardin(j) {
   for (const m of haie) if (!/GRAY/.test(m.name)) suite.add(m.clone());
 }
 function poserJardin() {
-  const modeles = {}; for (const d of JARDIN) (modeles[d.f] ||= charger('deco/' + d.f)).then((g) => { const o = g.scene.clone(true); const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+  const modeles = {}; for (const d of JARDIN) (modeles[d.f] ||= charger('deco/' + d.f)).then((g) => { const o = g.scene.clone(true); const t = new THREE.Box3().setFromObject(o, true).getSize(new THREE.Vector3());
     o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
-    const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
+    const b = new THREE.Box3().setFromObject(o, true), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
     const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(d.p[0], d.p[1], d.p[2]); pivot.rotation.y = d.p[3]; if (d.f === 'livres') livres = pivot; jardinPivots[d.f] ||= pivot; enregistrer(d.f, NOMS_JARDIN[d.f] || d.f, pivot);
     o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true;
       if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.25; m.material.depthWrite = true; } }); scene.add(pivot); });
@@ -712,8 +712,8 @@ const DEJA_LA = { chaise_jardin: 'la chaise longue', livres: 'la pile de livres'
 const cles = { objets: [], cle: null, avec: new Set(), trouvees: 0, temps: 45, en_cours: false, fini: false, anims: [] };
 const g2 = (g) => g.scene.clone(true);
 async function poserCachettes() {
-  const poser = (o, d) => { const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3()); o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
-    const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z); const pv = new THREE.Group(); pv.add(o); return pv; };
+  const poser = (o, d) => { o.updateMatrixWorld(true); const t = new THREE.Box3().setFromObject(o, true).getSize(new THREE.Vector3()); o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(o, true), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z); const pv = new THREE.Group(); pv.add(o); return pv; };
   await Promise.all(CACHETTES.map(async (d) => { const g = await charger('cles/' + d.id); const pv = poser(g.scene, d); pv.position.set(d.p[0], d.p[1], d.p[2]); pv.rotation.y = d.p[3];
     pv.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.4; m.material.depthWrite = true; } } });
     scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); enregistrer(d.id, d.nom, pv); }));
