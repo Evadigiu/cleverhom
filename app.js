@@ -345,9 +345,9 @@ canvas.addEventListener('pointerup', (ev) => {
 
 // ---------- jardin : chaise longue sur la pelouse, jacinthe sur la terrasse (à la place du fauteuil suspendu) ----------
 const JARDIN = [
-  { f: 'chaise_jardin', long: 1.95, p: [-3.05, -0.32, -1.3, -Math.PI / 2] },  // Garden Chair (Medhatelo) : dossier vers la maison, pieds vers le jardin
+  { f: 'chaise_jardin', long: 1.95, p: [-7.2, -0.32, 0.1, -Math.PI / 2] },  // Garden Chair (Medhatelo) : dossier vers la maison, pieds vers le jardin
   { f: 'jacinthe', haut: 0.55, p: [-2.25, 0.0, 3.85, 0] },                    // Hyacinth (scadl)
-  { f: 'livres', haut: 0.22, p: [-3.15, -0.32, -0.55, 0.5] },                  // pile de livres (Book pile) au pied de la chaise longue, côté terrasse
+  { f: 'livres', haut: 0.22, p: [-7.3, -0.32, 0.85, 0.5] },                  // pile de livres (Book pile) au pied de la chaise longue, côté terrasse
   // mobilier de terrasse comme la maison témoin : table en bois et six chaises en résine anthracite ; salon tressé chez le voisin
   { f: 'table_jardin', long: 2.2, p: [-2.0, -0.12, 2.7, Math.PI / 2] },        // Wooden Dining Table Set (aziseptian_), chaises teintées
   { f: 'salon_jardin', long: 2.7, p: [-1.85, -0.12, 11.4, -Math.PI / 2] },     // COMPLETE PATIO SET (shirlanne), sans la console
