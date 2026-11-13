@@ -335,6 +335,7 @@ canvas.addEventListener('pointerup', (ev) => {
 const JARDIN = [
   { f: 'chaise_longue', long: 1.75, p: [-3.05, -0.32, -1.3, Math.PI / 2] },   // Garden Lounge (scailman) : dossier vers la maison, pieds vers le jardin
   { f: 'jacinthe', haut: 0.55, p: [-2.25, 0.0, 3.85, 0] },                    // Hyacinth (scadl)
+  { f: 'livres', haut: 0.22, p: [-3.15, -0.32, -0.55, 0.5] },                  // pile de livres (Book pile) au pied de la chaise longue, côté terrasse
 ];
 // massif de fleurs (Garden Flower, ragukgr) le long du garage : côté jardin (x ≈ -1,5) puis le long du mur du fond (z ≈ -3,55)
 const GARAGE = { x0: -1.2, x1: 5.1, z0: -3.25, z1: -0.3 };
