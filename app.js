@@ -346,10 +346,8 @@ const JARDIN = [
   { f: 'table_jardin', long: 2.2, p: [-2.0, -0.12, 2.7, Math.PI / 2] },        // Wooden Dining Table Set (aziseptian_), chaises teintées
   { f: 'salon_jardin', long: 2.7, p: [-1.85, -0.12, 11.4, -Math.PI / 2] },     // COMPLETE PATIO SET (shirlanne), sans la console
 ];
-// massif de fleurs (Garden Flower, ragukgr) le long du garage : côté jardin (x ≈ -1,5) puis le long du mur du fond (z ≈ -3,55)
-const GARAGE = { x0: -1.2, x1: 5.1, z0: -3.25, z1: -0.3 };
-for (let z = GARAGE.z1 - 0.15, i = 0; z > GARAGE.z0 - 0.1; z -= 0.7, i++) JARDIN.push({ f: 'fleurs', long: 0.9 + (i % 3) * 0.08, p: [GARAGE.x0 - 0.42, -0.32, z, i * 1.7] });
-for (let x = GARAGE.x0 - 0.3, i = 0; x < GARAGE.x1 + 0.1; x += 0.7, i++) JARDIN.push({ f: 'fleurs', long: 0.9 + ((i + 1) % 3) * 0.08, p: [x, -0.32, GARAGE.z0 - 0.42, i * 2.3] });
+// massif de fleurs (Garden Flower, ragukgr) au pied du mur de côté (là où était le garage), du coin jardin jusqu'à la rue
+for (let x = 0.15, i = 0; x < 7.5; x += 0.7, i++) JARDIN.push({ f: 'fleurs', long: 0.9 + (i % 3) * 0.08, p: [x, -0.32, -0.72, i * 1.7] });
 let livres = null; // cachés pendant Noël
 // le modèle du jardin : on retire l'ancien salon de jardin (chaises pliantes, parasol) et on fait courir la haie entre les deux maisons,
 // du volume en bois jusqu'à la clôture du fond (elle était à la limite de l'ancienne maison jumelle)
@@ -1007,6 +1005,8 @@ async function demarrer() {
   $('jouer').disabled = false;
   // en arrière-plan : l'intérieur, la coupe, l'étage et le pommier
   const [inte, coupe, et, etage] = await Promise.all(['interieur', 'maison-coupe', 'maison-etage', 'etage'].map((n) => charger(n)));
+  // plus de garage : on retire la voiture qui y était garée
+  { const voiture = []; inte.scene.traverse((m) => { if (m.isMesh && new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3()).z < -0.6) voiture.push(m); }); for (const m of voiture) m.removeFromParent(); }
   decor.interieur = inte.scene; decor.etage = etage.scene; coques.coupe = coupe.scene; coques.etage = et.scene;
   scene.add(inte.scene, etage.scene, coupe.scene, et.scene);
   // cage d'escalier vue de l'étage : le modèle ne contient que les marches du haut, un fond sombre fait lire la descente
