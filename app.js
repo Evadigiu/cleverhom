@@ -53,7 +53,7 @@ const PLANS = {
   arbre: { pos: [-10.4, 6.0, -3.4], cible: [-5.6, 0.6, 1.3], fov: 50 },
   plantation: { pos: [-12.6, 3.0, -4.7], cible: [-5.6, 0.5, 0.9], fov: 46 },
   famille: { pos: [-14.3, 2.3, 3.7], cible: [-4.6, -0.35, 3.7], fov: 44 },
-  salon: { pos: [5.5, 10, -1.5], cible: [1.4, -0.9, 4.1], fov: 38 },
+  salon: { pos: [-4.6, 11.8, 8.6], cible: [3.2, -0.3, 2.4], fov: 46 }, // pivot au centre du rez-de-chaussée, entre la table et la cuisine
   etage: { pos: [-19, 31, -2], cible: [2.6, 1.2, 2.2], fov: 26 },
   aventures: { pos: [-22, 9, -6], cible: [1.0, -3.2, 3.2], fov: 46 },
   noel: { pos: [-12.2, 2.3, 7.2], cible: [-6.4, 0.25, 3.1], fov: 46 },
