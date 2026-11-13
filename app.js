@@ -54,11 +54,11 @@ const PLANS = {
   plantation: { pos: [-12.6, 3.0, -4.7], cible: [-5.6, 0.5, 0.9], fov: 46 },
   famille: { pos: [-14.3, 2.3, 3.7], cible: [-4.6, -0.35, 3.7], fov: 44 },
   salon: { pos: [-4.6, 11.8, 8.6], cible: [3.2, -0.3, 2.4], fov: 46 }, // pivot au centre du rez-de-chaussée, entre la table et la cuisine
-  etage: { pos: [-19, 31, -2], cible: [2.6, 1.2, 2.2], fov: 26 },
+  etage: { pos: [-16.4, 32.7, -2.6], cible: [5.2, 2.9, 1.6], fov: 25 }, // centré sur la pièce de 9 m²
   aventures: { pos: [-22, 9, -6], cible: [1.0, -3.2, 3.2], fov: 46 },
   noel: { pos: [-12.2, 2.3, 7.2], cible: [-6.4, 0.25, 3.1], fov: 46 },
   noelDehors: { pos: [-15, 4.0, 6.8], cible: [-2.2, 1.1, 2.0], fov: 50 },
-  noelMaison: { pos: [6.6, 9.2, -4.6], cible: [1.2, -0.6, 1.9], fov: 48 },
+  noelMaison: { pos: [10.4, 10.6, -4.5], cible: [5.0, 0.8, 2.0], fov: 48 }, // centré sur le joueur dans la maison
   fiche: { pos: [-20, 12, -8], cible: [0.5, -5.5, 3.0], fov: 46 },
 };
 let trajet = null; // transition douce de la caméra
@@ -95,7 +95,7 @@ const PLACES = {
     betes: [[-5.45, -0.32, 3.75, 2.27], [-5.45, -0.32, 4.45, 1.9], [-5.45, -0.32, 5.15, 2.0], [-5.95, -0.32, 4.1, 2.5], [-5.95, -0.32, 4.8, 2.6], [-5.95, -0.32, 3.5, 1.8]] },
   coupe: { gens: [[5.0, 0, 2.0, 2.36], [2.9, 0, 2.55, -1.88], [3.7, 0, 1.3, 3.0], [1.9, 0, 3.2, -1.0], [4.5, 0, 3.1, 2.8], [2.2, 0, 0.9, 0.5], [0.9, 0, 1.9, 1.2], [6.6, 0, 3.2, 2.6]],
     betes: [[1.4, 0, 3.6, 0.6], [2.6, 0, 4.1, 1.5], [0.9, 0, 2.6, 1.0], [4.0, 0, 2.4, 2.4], [2.0, 0, 1.6, 0.2], [5.5, 0, 1.5, 3.0]] },
-  etage: { gens: [[1.4, 2.9, 3.9, 0.5], [3.55, 2.9, 1.3, -1.57], [4.1, 2.9, 3.25, -2.2], [2.5, 2.9, 4.7, 0.8], [3.0, 2.9, 0.5, -1.2], [4.6, 2.9, 3.4, -2.6], [0.8, 2.9, 3.0, 0.3], [2.0, 2.9, 2.2, 0]],
+  etage: { gens: [[3.7, 2.9, 3.3, 0.5], [3.55, 2.9, 1.3, -1.57], [4.1, 2.9, 3.25, -2.2], [2.5, 2.9, 4.7, 0.8], [3.0, 2.9, 0.5, -1.2], [4.6, 2.9, 3.4, -2.6], [0.8, 2.9, 3.0, 0.3], [2.0, 2.9, 2.2, 0]],
     betes: [[2.2, 2.9, 3.4, 0], [0.9, 2.9, 4.6, 0], [1.2, 2.9, 1.0, 0], [2.8, 2.9, 1.0, 0], [0.6, 2.9, 3.4, 0], [2.6, 2.9, 4.4, 0]] },
 };
 // hauteur réelle et correction d'orientation (référence : le golden retriever)
@@ -163,6 +163,7 @@ const DECO = {
     cacher: (m) => /^Sink_Main/.test(m.name) || (/^Object_[2-6]$/.test(m.name) && centreDe(m).x > 4.5 && centreDe(m).z > 4.4 && centreDe(m).y < 2.5),
     poser: [
       { f: 'douche', long: 1.0, x: 5.6, y: 0.0, z: 5.2, r: 0, verre: /^Cube\.?00[1-4]/ },                     // douche vitrée (Shower, Ali_Army107), ouverture côté pièce
+      { f: 'seche_serviette', haut: 1.0, x: 7.1, y: 3.12, z: 5.6, r: Math.PI, etage: true },        // sèche-serviettes (Atlant by Laris, gorun_architect) à la place du lave-linge de l'étage
       { f: 'tapis_sdb', long: 0.75, x: 6.55, y: 0.04, z: 5.05, r: 0 },            // tapis en paille (petate, ocelotlmx) entre la douche et le lavabo
       { f: 'lavabo', long: 0.75, ech: [1, 1.6, 1.5], x: 7.38, y: 0.0, z: 4.55, r: -Math.PI / 2 }, // meuble vasque et miroir rond (kimlong070809) contre le mur est
     ],
@@ -292,12 +293,12 @@ function montrerBoule() {
     noel.boule = pivot; pivot.visible = ecran === 'noel' && !noel.fait; scene.add(pivot); });
 }
 let noelActif = false;
-function cacherNoel() { if (noel.groupe) noel.groupe.visible = false; if (noel.boule) noel.boule.visible = false; noel.fait = false; noelActif = false; appliquerStyle(styleActif); }
+function cacherNoel() { if (livres) livres.visible = true; if (noel.groupe) noel.groupe.visible = false; if (noel.boule) noel.boule.visible = false; noel.fait = false; noelActif = false; appliquerStyle(styleActif); }
 async function ouvrirBoule() {
   if (noel.fait) return; noel.fait = true; confettis();
   if (noel.boule) noel.boule.visible = false;
   dessiner(); await chargerNoel();
-  noelActif = true; noel.dedans = false; appliquerStyle(styleActif); montrer('exterieur', true); viser('noelDehors');
+  noelActif = true; if (livres) livres.visible = false; noel.dedans = false; appliquerStyle(styleActif); montrer('exterieur', true); viser('noelDehors');
   noel.groupe.visible = true; const objets = noel.groupe.children.filter((p) => p !== noel.sol && p !== noel.flocons);
   noel.pops = objets.map((p, i) => ({ p, t: -i * 0.07 })); for (const p of objets) p.scale.setScalar(0.001);
   dessiner();
@@ -341,11 +342,12 @@ const JARDIN = [
 const GARAGE = { x0: -1.2, x1: 5.1, z0: -3.25, z1: -0.3 };
 for (let z = GARAGE.z1 - 0.15, i = 0; z > GARAGE.z0 - 0.1; z -= 0.7, i++) JARDIN.push({ f: 'fleurs', long: 0.9 + (i % 3) * 0.08, p: [GARAGE.x0 - 0.42, -0.32, z, i * 1.7] });
 for (let x = GARAGE.x0 - 0.3, i = 0; x < GARAGE.x1 + 0.1; x += 0.7, i++) JARDIN.push({ f: 'fleurs', long: 0.9 + ((i + 1) % 3) * 0.08, p: [x, -0.32, GARAGE.z0 - 0.42, i * 2.3] });
+let livres = null; // cachés pendant Noël
 function poserJardin() {
   const modeles = {}; for (const d of JARDIN) (modeles[d.f] ||= charger('deco/' + d.f)).then((g) => { const o = g.scene.clone(true); const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
     o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
-    const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(d.p[0], d.p[1], d.p[2]); pivot.rotation.y = d.p[3];
+    const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(d.p[0], d.p[1], d.p[2]); pivot.rotation.y = d.p[3]; if (d.f === 'livres') livres = pivot;
     o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true;
       if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.25; m.material.depthWrite = true; } }); scene.add(pivot); });
 }
@@ -356,7 +358,7 @@ const PIECES = {
   bureau: { garder: /^bureau__/, poser: [{ f: 'bibliotheque', long: 1.45, ech: [1, 1, 0.45], x: 7.33, y: 2.9, z: 0.95, r: -Math.PI / 2 }] },   // Metal frame bookcase (boglarka4)
   bebe: { garder: null, murs: '#b4d4ef', poser: [                                                        // murs bleu layette
     { f: 'bebe_lit', long: 1.25, x: 6.25, y: 2.9, z: 2.24, r: 0, etage: true },                         // Baby Bed (bkarc), contre le mur du fond
-    { f: 'bebe_armoire', haut: 1.75, x: 7.3, y: 2.9, z: 0.7, r: -Math.PI / 2, etage: true },             // baby boy closet (pinabinicartoons)
+    { f: 'bebe_armoire', haut: 1.75, x: 6.9, y: 2.9, z: 0.32, r: 0, etage: true },             // baby boy closet (pinabinicartoons)
     { f: 'bebe_chaise', haut: 0.95, x: 4.95, y: 2.9, z: 0.55, r: 0.5, etage: true },                     // Baby's Highchair (Anastengp)
     { f: 'bebe_pack', long: 0.7, x: 5.55, y: 2.9, z: 1.55, r: 1.2, etage: true },                       // Baby Pack (liebherr996litronic) : couches, peluches, cubes
     { f: 'bebe_draisienne', long: 0.55, x: 6.1, y: 2.9, z: 0.95, r: 0.7, etage: true },                  // XJD Baby Balance Bike (1021.akshays)
