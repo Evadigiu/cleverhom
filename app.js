@@ -796,6 +796,19 @@ function herbeDense(racine) {
     mat.map = tx; mat.color.set('#ffffff'); mat.roughness = 1; m.material = mat; m.receiveShadow = true; });
 }
 
+// ---------- faisceaux des deux appliques murales sur le bardage (lumière vers le haut et vers le bas) ----------
+function faisceaux() {
+  const W = 128, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  // un cône de lumière qui part du centre (l'applique) et s'évase en s'estompant vers le haut et vers le bas
+  const img = g.createImageData(W, H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const v = Math.abs(y - H / 2) / (H / 2), u = Math.abs(x - W / 2) / (W / 2), larg = 0.18 + 0.7 * v;
+    const a = Math.min(1, Math.max(0, 1 - u / larg) ** 1.1 * Math.max(0, 1 - v) ** 0.8 * 1.3 + Math.max(0, 1 - Math.hypot(u * 2.2, v * 3.2)) * 0.6) * (v < 0.04 ? 0.3 + v / 0.04 * 0.7 : 1); const k = (y * W + x) * 4;
+    img.data[k] = 255; img.data[k + 1] = 186; img.data[k + 2] = 92; img.data[k + 3] = Math.round(255 * a); }
+  g.putImageData(img, 0, 0); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshBasicMaterial({ map: t, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 1, toneMapped: false });
+  for (const z of [0.3, 3.95]) { for (let k = 0; k < 2; k++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.7), mat); m.position.set(-0.335 - k * 0.002, 2.05, z); m.rotation.y = -Math.PI / 2; m.renderOrder = 2; scene.add(m); } }
+}
+faisceaux();
 // ---------- vues de la maison ----------
 let vue = null;
 const VUES = {
