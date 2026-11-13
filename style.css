@@ -219,3 +219,7 @@ body[data-ecran="arbre"] .question .intitule { margin-bottom: 0; }
 .emojis { position: fixed; inset: 0; pointer-events: none; z-index: 30; overflow: hidden; }
 .emojis span { position: absolute; transform: translate(-50%, -50%); animation: monte 2.6s ease-out forwards; }
 @keyframes monte { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -260%) scale(1.1); } }
+
+/* page de fin : formulaire */
+.accroche { margin: 0 0 8px; font-size: 13.5px; line-height: 1.35; font-weight: 600; }
+.champs.compact + .champs.compact, .champs.compact + .consentement, .consentement + .consentement { margin-top: 6px; }

@@ -711,7 +711,8 @@ async function planter(id) {
 let numero = 0; const membre = (prenom, age, type, avatar) => ({ id: 'm' + (++numero), prenom, age, type, avatar, habitudes: [] });
 // on démarre avec le joueur seul (« Vous ») : aucune famille d'exemple ne doit finir dans la fiche du conseiller
 const moi = Object.assign(membre('', '', 'adulte', 'f07'), { moi: true });
-const etat = { valeur: null, arbre: null, membres: [moi], membre: moi.id, style: null, piece: null, chambres: 3, aventure: null, prenom: '', contact: '', accord: false, envoye: false };
+const etat = { valeur: null, arbre: null, membres: [moi], membre: moi.id, style: null, piece: null, chambres: 3, aventure: null, prenom: '', nom: '', email: '', tel: '', recevoir: true, rappel: false, envoye: false };
+const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const ARBRES = [
   { id: 'pommier', nom: 'Pommier', le: 'le pommier', couleur: '#d6382f', titre: 'Le pommier · ce qui se transmet', texte: "Planté par vous, cueilli par vos enfants, puis par les leurs. L'arbre des vergers alsaciens." },
@@ -884,11 +885,14 @@ const ECRANS = {
         ['Habitudes', [...new Set(etat.membres.flatMap((m) => m.habitudes))].map((h) => libelle(HABITUDES, h)).join(', ') || '—'],
         ['Le style', libelle(STYLES, etat.style)], ['La pièce de 9 m²', libelle(PIECE, etat.piece)], ['Chambres souhaitées', etat.chambres]];
       return `<details class="detail"><summary>Votre maison en résumé</summary><div>${lignes.map(([a, b]) => `<div class="ligne-recap"><span>${a}</span><b>${esc(b)}</b></div>`).join('')}</div></details>`
-        + (etat.envoye ? `<p class="message">Résultat sauvegardé ! Dans cette version de démonstration, il n'est pas encore transmis au conseiller.</p>` :
-        `<div class="champs compact"><input id="prenom" aria-label="Prénom" placeholder="Prénom" autocomplete="given-name" value="${esc(etat.prenom || moi.prenom)}"><input id="contact" aria-label="Téléphone ou e-mail" placeholder="Téléphone ou e-mail" autocomplete="tel" value="${esc(etat.contact)}"></div>
-        <label class="consentement"><input type="checkbox" id="accord" ${etat.accord ? 'checked' : ''}><span>J'accepte qu'un conseiller Clever'hom me recontacte.</span></label>`);
+        + (etat.envoye ? `<p class="message">C'est noté ! Votre Clever’hom vous attend dans votre boîte mail. (Version de démonstration : l'e-mail n'est pas encore envoyé.)</p>` :
+        `<p class="accroche">Recevez votre Clever’hom personnalisée par e-mail, avec le résumé de vos choix.</p>
+        <div class="champs compact"><input id="prenom" aria-label="Prénom" placeholder="Prénom" autocomplete="given-name" value="${esc(etat.prenom || moi.prenom)}"><input id="nom" aria-label="Nom" placeholder="Nom" autocomplete="family-name" value="${esc(etat.nom)}"></div>
+        <div class="champs compact"><input id="email" type="email" inputmode="email" aria-label="E-mail (obligatoire)" placeholder="E-mail *" autocomplete="email" required value="${esc(etat.email)}"><input id="tel" type="tel" inputmode="tel" aria-label="Téléphone" placeholder="Téléphone" autocomplete="tel" value="${esc(etat.tel)}"></div>
+        <label class="consentement"><input type="checkbox" id="recevoir" ${etat.recevoir ? 'checked' : ''}><span>Je souhaite recevoir ma maison par e-mail.</span></label>
+        <label class="consentement"><input type="checkbox" id="rappel" ${etat.rappel ? 'checked' : ''}><span>J'accepte d'être recontacté(e) par un conseiller Clever’hom pour parler de mon projet.</span></label>`);
     },
-    suite: () => etat.envoye ? 'Recommencer' : 'Sauvegarder', pret: () => etat.envoye || (etat.accord && etat.contact.trim().length >= 6),
+    suite: () => etat.envoye ? 'Recommencer' : 'Recevoir ma maison', pret: () => etat.envoye || (etat.recevoir && EMAIL_OK.test(etat.email.trim())),
   },
 };
 
@@ -931,8 +935,8 @@ $('contenu').addEventListener('change', (ev) => { if (ev.target.id === 'prenom-m
 $('contenu').addEventListener('input', (ev) => {
   if (ev.target.id === 'prenom-m') ev.target.classList.remove('manquant');
   if (ev.target.id === 'prenom') etat.prenom = ev.target.value;
-  if (ev.target.id === 'contact') etat.contact = ev.target.value;
-  if (ev.target.id === 'accord') etat.accord = ev.target.checked;
+  for (const k of ['nom', 'email', 'tel']) if (ev.target.id === k) etat[k] = ev.target.value;
+  if (ev.target.id === 'recevoir' || ev.target.id === 'rappel') etat[ev.target.id] = ev.target.checked;
   if (ev.target.id === 'age-m') { clearTimeout(attenteAge); attenteAge = setTimeout(() => { const m = membreActif(), c = categorieAge(m.age);
     if (c && c !== m.type && m.type !== 'animal') { m.type = c; m.avatar = libreParmi(visages(c), m);
       if (c === 'enfant') m.habitudes = m.habitudes.filter((h) => HABITUDES_ENFANT.includes(h)); synchroniserFamille(); $('visages').innerHTML = visagesHtml(m); $('puces').innerHTML = ECRANS[ecran].puces().map(puceHtml).join(''); } }, 600); }
