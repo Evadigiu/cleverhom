@@ -706,8 +706,8 @@ const CACHETTES = [
   { id: 'balancelle', nom: 'la balancelle', long: 2.1, p: [-8.0, -0.32, 6.15, Math.PI] },              // Swing Bench (johhny_3D), dos à la haie, face au jardin
   { id: 'arrosoir', nom: "l'arrosoir", haut: 0.5, p: [-1.15, -0.32, -1.75, 0.5] },                    // Watering Can (taipl)
 ];
-// cinq érables alignés le long de la bordure gauche du jardin, de la maison jusqu'à la clôture du fond (Maple tree, atrodler)
-const ERABLES = [-2.0, -3.9, -5.8, -7.7, -9.5].map((x, i) => ({ id: 'erable' + (i + 1), nom: "l'érable", p: [x, -0.32, -2.3, i * 1.3] }));
+// érables alignés le long de la bordure gauche du jardin (Maple tree, atrodler)
+const ERABLES = [-0.1, -1.98, -3.86, -5.74, -7.62, -9.5].map((x, i) => ({ id: 'erable' + (i + 1), nom: "l'érable", p: [x, -0.32, -4.3, i * 1.3] })); // six érables, 2 m à gauche du jardin, de la clôture du fond jusqu'au niveau de la façade
 const DEJA_LA = { chaise_jardin: 'la chaise longue', livres: 'la pile de livres', jacinthe: 'la jacinthe', table_jardin: 'la table' };
 const cles = { objets: [], cle: null, avec: new Set(), trouvees: 0, temps: 45, en_cours: false, fini: false, anims: [] };
 const g2 = (g) => g.scene.clone(true);
