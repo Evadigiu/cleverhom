@@ -32,7 +32,7 @@ scene.fog = new THREE.Fog('#fdece3', 34, 70);
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.6;
-scene.add(new THREE.HemisphereLight('#fff0e0', '#c7b48e', 1.05));
+const ciel = new THREE.HemisphereLight('#fff0e0', '#c7b48e', 1.05); scene.add(ciel);
 const soleil = new THREE.DirectionalLight('#ffdcb5', 3.1);
 soleil.position.set(-12, 22, -4); soleil.target.position.set(2, 0, 3);
 soleil.castShadow = true; soleil.shadow.mapSize.set(2048, 2048);
@@ -411,7 +411,8 @@ const FETE = [
   { f: 'gateau', precis: true, table: true, haut: 0.32, p: [[1.85, 0.745, 1.45, 0]] },                              // Strawberry Cake (strawbie133)
   { f: 'pizza', precis: true, table: true, long: 0.42, p: [[2.35, 0.745, 1.85, 2.6]] },                             // Pizza and pizza box (AMMediaGames)
 ];
-const fete = { volume: 1, son: null, pluie: null, groupe: null, charge: null, invites: [], mixers: [], clips: {}, lumieres: [], t: 0, faite: false };
+const DISCO = ['#ff7ac4', '#7ad0ff', '#d8ff7a'].map((c) => new THREE.Color(c));
+const fete = { calques: [], volume: 1, son: null, pluie: null, groupe: null, charge: null, invites: [], mixers: [], clips: {}, lumieres: [], t: 0, faite: false };
 const SEXE = (a) => /^(f|fb|fs|fille)/.test(a) ? 'f' : 'm';
 const ENFANT = (a) => /^(fille|garcon)/.test(a);
 async function clipFete(nom, enfant) {
@@ -432,10 +433,11 @@ function chargerFete() {
       if (d.vise) { // le faisceau du modèle part vers +x/+y : on l'oriente vers la boule
         const dir = new THREE.Vector3(...d.vise).sub(pivot.position).normalize(); pivot.quaternion.setFromUnitVectors(new THREE.Vector3(1, 1, 0).normalize(), dir); }
       o.traverse((m) => { if (!m.isMesh) return; m.castShadow = false; m.frustumCulled = false; if (d.brille) { m.material = m.material.clone(); m.material.emissive = new THREE.Color(d.brille); m.material.emissiveIntensity = 0.9; } });
-      if (g.animations.length) { const mx = new THREE.AnimationMixer(o); for (const a of g.animations) mx.clipAction(a).play(); fete.mixers.push(mx); }
+      if (g.animations.length) { const mx = new THREE.AnimationMixer(o); for (const a of g.animations) mx.clipAction(a).play(); fete.mixers.push(mx);
+        // calques qui s'allument par changement d'échelle : un calque éteint (échelle nulle) n'est plus dessiné du tout
+        for (const a of g.animations) for (const t of a.tracks) if (t.name.endsWith('.scale')) { const n = o.getObjectByName(THREE.PropertyBinding.parseTrackName(t.name).nodeName); if (n) fete.calques.push(n); } }
       fete.groupe.add(pivot); } }));
   // deux lumières de couleur qui tournent autour de la boule
-  for (const c of ['#ff3ea5', '#3ec8ff']) { const l = new THREE.PointLight(c, 0, 6, 1.5); fete.groupe.add(l); fete.lumieres.push(l); }
   fete.pluie = creerPluie(); fete.groupe.add(fete.pluie);
   return fete.charge;
 }
@@ -491,10 +493,14 @@ async function lancerFete() {
   if (fete.faite) return; fete.faite = true; feteActive = true; confettis(); demarrerMusique();
   // le buffet se pose sur la table du style choisi (table chaleureuse plus basse que la table moderne)
   fete.charge?.then(() => { for (const q of fete.groupe.children) if (q.userData.table) q.position.y = etat.style === 'chaleureux' ? 0.745 : 0.962; });
-  await chargerFete(); fete.groupe.visible = true; appliquerStyle(styleActif); visibiliteDeco();
-  montrer('coupe', false); viser('fete');
+  montrer('coupe', false); viser('fete'); fete.pret = false; dessiner(); // la caméra part tout de suite vers le salon pendant le chargement
+  await chargerFete(); if (!fete.faite) return;
+  try { fete.groupe.visible = true; await renderer.compileAsync(fete.groupe, camera, scene); } catch (e) { /* compilation à la première image */ }
+  if (!fete.faite) return; appliquerStyle(styleActif); visibiliteDeco(); fete.pret = true; dessiner();
+  // pendant la fête, les ombres de la maison sont calculées une fois puis figées (rien ne bouge à part les danseurs, qui n'en projettent pas)
+  for (const it of instances.values()) it.obj.traverse((x) => { if (x.isMesh) x.castShadow = false; });
+  soleil.shadow.autoUpdate = false; soleil.shadow.needsUpdate = true;
   soleil.intensity = 1.2; scene.environmentIntensity = 0.35; // ambiance de soirée
-  for (const l of fete.lumieres) l.intensity = 6;
   // la famille du joueur danse déjà au centre
   let n = 0;
   for (const m of etat.membres) { const it = instances.get(m.id); if (!it) continue; const [x, z] = placeDanse(n++); it.obj.visible = true; it.obj.position.set(x, 0, z); it.obj.lookAt(1.55, 0, 4.2);
@@ -502,16 +508,23 @@ async function lancerFete() {
   // les invités : tous les autres personnages, qui entrent l'un après l'autre
   const deja = new Set(etat.membres.map((m) => baseAvatar(m.avatar)));
   const tous = [...CATALOGUE.adulte, ...CATALOGUE.senior, ...CATALOGUE.enfant].filter((a, i, l) => l.indexOf(a) === i && !deja.has(a));
-  tous.forEach(async (a, i) => { const g = await modele(a); const o = SkeletonUtils.clone(g.scene); o.traverse((x) => { if (x.isMesh) { x.castShadow = true; x.frustumCulled = false; } });
+  // chargés l'un après l'autre (le téléphone décode une seule personne à la fois), version légère, compilés avant d'entrer
+  const t0 = fete.t, tour = fete.tour = (fete.tour || 0) + 1, encore = () => fete.faite && fete.tour === tour;
+  for (const [i, a] of tous.entries()) { if (!encore()) return;
+    const g = await charger('../avatars/leger/' + a); const o = SkeletonUtils.clone(g.scene); o.traverse((x) => { if (x.isMesh) { x.castShadow = false; x.frustumCulled = false; } });
     const mx = new THREE.AnimationMixer(o), marche = await clipFete(SEXE(a) + '_walk_neutral_01', ENFANT(a)), danse = await clipFete(DANSES[SEXE(a)][i % 3], ENFANT(a));
-    const am = mx.clipAction(marche); am.play(); o.visible = false; o.position.set(...CHEMIN[0]); fete.groupe.add(o);
-    const v = { avatar: a, o, mx, am, danse, depart: i * 1.1, seg: 0, but: placeDanse(n + i), vitesse: (ENFANT(a) ? 0.9 : 1.15) }; fete.invites.push(v); });
+    const am = mx.clipAction(marche); am.play(); o.position.set(...CHEMIN[0]);
+    try { await renderer.compileAsync(o, camera, scene); } catch (e) { /* compilation à la première image */ }
+    if (!encore()) return; o.visible = false; fete.groupe.add(o);
+    const v = { avatar: a, o, mx, am, danse, depart: Math.max(fete.t, t0 + i * 1.1), seg: 0, but: placeDanse(n + i), vitesse: (ENFANT(a) ? 0.9 : 1.15) }; fete.invites.push(v); }
 }
 function avancerFete(dt) {
   if (!feteActive) return; fete.t += dt; avancerMusique();
   if (fete.pluie) { const a = fete.pluie.geometry.attributes.position, v = fete.pluie.userData.vit; for (let i = 0; i < v.length; i++) { let y = a.array[i * 3 + 1] - v[i] * dt * fete.volume; a.array[i * 3] += Math.sin(fete.t * 3 + i) * 0.004; if (y < 0.02) y = 2.6; a.array[i * 3 + 1] = y; } a.needsUpdate = true; }
   for (const mx of fete.mixers) mx.update(dt);
-  fete.lumieres.forEach((l, i) => { const a = fete.t * 1.6 + i * Math.PI; l.position.set(1.55 + Math.cos(a) * 1.2, 1.4, 4.2 + Math.sin(a) * 1.2); l.intensity = fete.volume > 1 ? 4 + 4 * (Math.sin(fete.t * 12 + i) > 0) : 6; });
+  for (const n of fete.calques) n.visible = n.scale.x > 0.01 && n.scale.y > 0.01;
+  // ambiance disco sans lumière supplémentaire : la lumière du ciel change de couleur (rose, bleu, vert), plus vite quand on monte le son
+  { const k = (fete.t * (fete.volume > 1 ? 2.4 : 0.8)) % 3, i = Math.floor(k), f = k - i; ciel.color.copy(DISCO[i]).lerp(DISCO[(i + 1) % 3], f); }
   for (const v of fete.invites) { v.mx.update(dt); if (fete.t < v.depart) continue; v.o.visible = true; if (v.fini) continue;
     const pts = CHEMIN.concat([[v.but[0], 0, v.but[1]]]); const cible = new THREE.Vector3(...pts[v.seg + 1]);
     const d = cible.clone().sub(v.o.position); const pas = v.vitesse * dt;
@@ -521,7 +534,8 @@ function avancerFete(dt) {
 function arreterFete() {
   if (!fete.faite) return; fete.faite = false; feteActive = false; fete.t = 0; arreterMusique(); if (fete.volume > 1) monterLeSon();
   for (const v of fete.invites) fete.groupe.remove(v.o); fete.invites = [];
-  if (fete.groupe) fete.groupe.visible = false; soleil.intensity = 3.1; scene.environmentIntensity = 0.6;
+  if (fete.groupe) fete.groupe.visible = false; soleil.intensity = 3.1; scene.environmentIntensity = 0.6; ciel.color.set('#fff0e0');
+  for (const it of instances.values()) it.obj.traverse((x) => { if (x.isMesh) x.castShadow = true; }); soleil.shadow.autoUpdate = true;
   for (const m of etat.membres) { const it = instances.get(m.id); const g = modeles[m.avatar]; if (it?.mixer) g.then((gg) => { it.mixer.stopAllAction(); if (gg.animations[0]) it.mixer.clipAction(gg.animations[0]).play(); }); }
   appliquerStyle(styleActif); placerFamille();
 }
@@ -739,7 +753,7 @@ const ECRANS = {
   },
   fete: {
     vue: 'coupe', plan: 'fete', etape: '🥂',
-    intitule: () => 'Touchez un invité !',
+    intitule: () => fete.faite && !fete.pret ? 'Les invités arrivent…' : 'Touchez un invité !',
     contenu: () => `<div class="tuiles">${tuile('son', musique.on ? 'Musique' : 'Muet', musique.on, musique.on ? 'Couper la musique' : 'Remettre la musique')}${tuile('fort', 'Monter le son', fete.volume > 1, 'Monter le son')}</div>`,
     clic: (id) => { if (id === 'son') { if (musique.on) arreterMusique(); else demarrerMusique(); } if (id === 'fort') monterLeSon(); },
     suite: () => fete.faite ? 'Voir ma maison' : 'Lancer la fête', pret: () => true,
@@ -912,4 +926,4 @@ if (!QS.has('capture')) renderer.setAnimationLoop(() => {
 });
 
 demarrer().catch((e) => { const t = $('texte'); t.textContent = 'Le chargement a échoué. Rechargez la page.'; t.classList.remove('visuellement-cache'); console.error(e); });
-window.__hauteur = (x, z) => { rayon.set(new THREE.Vector3(x, 1.6, z), new THREE.Vector3(0, -1, 0)); return rayon.intersectObjects(scene.children, true).filter((h) => h.object.isMesh && !fete.groupe?.getObjectById(h.object.id)).slice(0, 4).map((h) => [h.object.name, +h.point.y.toFixed(3)]); };
+window.__info = () => { let tex = 0; const vu = new Set(); scene.traverse((o) => { if (!o.visible || !o.material) return; for (const m of [].concat(o.material)) for (const k of ['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap']) { const t = m[k]; if (t?.image && !vu.has(t)) { vu.add(t); tex += (t.image.width || 0) * (t.image.height || 0) * 4 * 1.33; } } }); return { appels: renderer.info.render.calls, triangles: renderer.info.render.triangles, programmes: renderer.info.programs.length, textures: renderer.info.memory.textures, texturesVisiblesMo: Math.round(tex / 1e6) }; };
