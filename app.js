@@ -580,8 +580,9 @@ async function chargerNaissance() {
     rayon.set(new THREE.Vector3(BERCEAU.x, bl.max.y + 1, BERCEAU.z), new THREE.Vector3(0, -1, 0)); const h = rayon.intersectObject(lit, true)[0];
     bebe.position.set(BERCEAU.x, (h ? h.point.y : bl.min.y + sl.y * 0.45) + 0.01, BERCEAU.z); bebe.visible = false; nais.groupe.add(bebe); nais.bebe = bebe;
     let sac = null; gc.scene.traverse((m) => { if (m.isMesh && /pCube1/.test(m.name)) sac = m; }); nais.sac = sac; // le baluchon du bec disparaît au « pouf »
-    // la cigogne et son battement d'ailes (le bec regarde déjà vers +z, le sens de lookAt)
-    const c = poser(gc.scene, 2.6, 'long'); // envergure de conte, pour qu'on la voie bien  c.traverse((m) => { if (m.isMesh) { m.castShadow = false; m.frustumCulled = false; } });
+    // la cigogne et son battement d'ailes
+    const c = poser(gc.scene, 2.6, 'long'); // envergure de conte, pour qu'on la voie bien
+    c.children[0].rotation.y = Math.PI; // le bec du modèle regarde vers -z : demi-tour pour qu'il pointe dans le sens du vol (vérifié caméra derrière la cigogne)  c.traverse((m) => { if (m.isMesh) { m.castShadow = false; m.frustumCulled = false; } });
     nais.groupe.add(c); nais.cigogne = c; nais.mixer = new THREE.AnimationMixer(c.children[0]); for (const a of gc.animations) nais.mixer.clipAction(a).play();
     // le nuage du « pouf »
     const n = poser(gn.scene, 1.6, 'y'); n.visible = false; n.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.material.depthWrite = false; m.material.emissive = new THREE.Color('#ffffff'); m.material.emissiveIntensity = 0.55; nais.nuageMats.push(m.material); m.frustumCulled = false; } });
