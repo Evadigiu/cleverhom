@@ -350,6 +350,27 @@ function poserJardin() {
       if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.25; m.material.depthWrite = true; } }); scene.add(pivot); });
 }
 
+// ---------- la pièce de 9 m² : une déco par usage ----------
+// bureau : le mobilier d'origine du modèle de l'étage (nœuds « bureau__… ») et une bibliothèque ; bébé et sport : à venir
+const PIECES = {
+  bureau: { garder: /^bureau__/, poser: [{ f: 'bibliotheque', long: 1.45, ech: [1, 1, 0.45], x: 7.33, y: 2.9, z: 0.95, r: -Math.PI / 2 }] },   // Metal frame bookcase (boglarka4)
+  bebe: { garder: null, poser: [] },
+  sport: { garder: null, poser: [] },
+};
+const piecePosee = {};
+async function amenagerPiece(id) {
+  const P = PIECES[id] || PIECES.bureau;
+  if (decor.etage) decor.etage.traverse((m) => { if (m.isMesh && /^bureau__/.test(m.name)) m.visible = !!P.garder && P.garder.test(m.name); });
+  for (const [k, g] of Object.entries(piecePosee)) g.visible = k === id && !!decor.etage?.visible;
+  if (piecePosee[id] || !P.poser.length) return;
+  const groupe = new THREE.Group(); piecePosee[id] = groupe; scene.add(groupe);
+  await Promise.all(P.poser.map(async (p) => { const g = await charger('deco/' + p.f); const o = g.scene;
+    const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3()); o.scale.multiplyScalar(p.haut ? p.haut / t.y : p.long / Math.max(t.x, t.z)); if (p.ech) o.scale.multiply(new THREE.Vector3(...p.ech));
+    const pivot = new THREE.Group(); pivot.add(o); o.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3());
+    o.position.set(-c.x, -b.min.y, -c.z); pivot.position.set(p.x, p.y, p.z); pivot.rotation.y = p.r; groupe.add(pivot); }));
+  groupe.visible = (etat.piece || 'bureau') === id && !!decor.etage?.visible;
+}
+
 // ---------- vues de la maison ----------
 let vue = null;
 const VUES = {
@@ -362,7 +383,7 @@ function montrer(nom, fam = true) {
   for (const [k, o] of Object.entries(coques)) o.visible = k === v.coque;
   if (decor.interieur) decor.interieur.visible = v.interieur;
   if (decor.etage) decor.etage.visible = v.etage;
-  zone9.visible = nom === 'etage'; visibiliteDeco();
+  zone9.visible = nom === 'etage' && !etat.piece; visibiliteDeco(); for (const [k, g] of Object.entries(piecePosee)) g.visible = k === (etat.piece || 'bureau') && v.etage;
   placerFamille();
 }
 // terre au pied de l'arbre, visible seulement une fois l'arbre planté
@@ -457,7 +478,7 @@ const HABITUDES_ENFANT = ['jeux', 'sport', 'jardin', 'cuisine'];
 const HABITUDES_CHIEN = [['balade', 'Balades', 'accès jardin'], ['dodo', 'Sieste', 'un panier au calme']];
 // deux scénographies pour toute la maison ; la cuisine et les salles d'eau ne changent pas
 const STYLES = [['moderne', 'Moderne et épuré', 'Lignes nettes, tons clairs, peu d’objets'], ['chaleureux', 'Chaleureux et coloré', 'Couleurs vives, fleurs, mobilier accueillant']];
-const PIECE = [['bureau', 'Bureau', 'pour télétravailler'], ['amis', "Chambre d'amis", 'pour recevoir'], ['jeux', 'Salle de jeux', 'pour les enfants'], ['sport', 'Salle de sport', 'pour bouger'], ['bebe', 'Chambre de bébé', 'pour la suite']];
+const PIECE = [['bebe', 'Chambre de bébé', 'pour la suite'], ['bureau', 'Bureau', 'pour télétravailler'], ['sport', 'Salle de sport', 'pour bouger']];
 const AVENTURES = [
   ['noel', 'La bombe de Noël', 'Une boule éclate et toute la maison s’habille de lumières et de neige.', 'De saison', '#c4d000'],
   ['fete', 'La crémaillère', 'Guirlandes, platines et grande tablée : les voisins débarquent.', 'Avec les voisins', '#e6ec9a'],
@@ -550,7 +571,7 @@ const ECRANS = {
     intitule: () => `${prenoms()}… et une pièce de 9 m² à imaginer.`,
     contenu: () => `<p class="titre-panneau">Cette pièce devient…</p><div class="grille trois">${PIECE.map(([id, l, s]) => choix(id, l, s, etat.piece === id)).join('')}</div>`
       + `<div class="compteur"><p>Idéalement, combien de chambres vous faudrait-il ?</p><div><button type="button" data-id="moins" aria-label="Une chambre de moins">−</button><output>${etat.chambres}</output><button type="button" data-id="plus" aria-label="Une chambre de plus">+</button></div></div>`,
-    clic: (id) => { if (id === 'moins') etat.chambres = Math.max(1, etat.chambres - 1); else if (id === 'plus') etat.chambres = Math.min(6, etat.chambres + 1); else etat.piece = id; },
+    clic: (id) => { if (id === 'moins') etat.chambres = Math.max(1, etat.chambres - 1); else if (id === 'plus') etat.chambres = Math.min(6, etat.chambres + 1); else { etat.piece = id; zone9.visible = false; amenagerPiece(id); } },
     suite: () => etat.piece ? 'Choisir une aventure' : 'Choisissez l’usage de la pièce', pret: () => !!etat.piece,
   },
   aventures: {
@@ -679,7 +700,7 @@ async function demarrer() {
   const [inte, coupe, et, etage] = await Promise.all(['interieur', 'maison-coupe', 'maison-etage', 'etage'].map((n) => charger(n)));
   decor.interieur = inte.scene; decor.etage = etage.scene; coques.coupe = coupe.scene; coques.etage = et.scene;
   scene.add(inte.scene, etage.scene, coupe.scene, et.scene);
-  appliquerStyle(etat.style || 'moderne'); poserDeco('commun').then(visibiliteDeco);
+  appliquerStyle(etat.style || 'moderne'); poserDeco('commun').then(visibiliteDeco); amenagerPiece(etat.piece || 'bureau');
   montrer(vue, ECRANS[ecran]?.famille !== false);
   if (!arbres.pommier) chargerArbre('pommier');
   mesures.complet = (performance.now() - DEBUT) / 1000; mesures.tout = total;
@@ -708,11 +729,12 @@ window.__perf = () => ({ triangles: renderer.info.render.triangles, appels: rend
 // rendu en tuiles pour l'impression : une portion (x, y, w, h) d'une image de W × H pixels, à la définition exacte
 window.__tuile = (W, H, x, y, w, h) => { renderer.setPixelRatio(1); renderer.setSize(w, h, false); canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
   camera.aspect = W / H; camera.setViewOffset(W, H, x, y, w, h); camera.updateProjectionMatrix(); renderer.render(scene, camera); };
+window.__bureau = () => { const L = []; decor.etage?.traverse((m) => { if (/bureau/.test(m.name)) L.push(m.type + ':' + m.name + ':' + m.visible); }); return L.join(' | ') + ' // posés ' + Object.keys(piecePosee).join(','); };
 window.__aller = (n) => { aller(n); if (trajet) { trajet.t = 1; avancerTrajet(0); } };
 window.__rituel = async (n, t = 1) => { if (n === 'plaque') { await ceremonie(); if (trajet) { trajet.t = 1; avancerTrajet(0); } if (croissance) { croissance.t = 0; avancerCroissance(2.6 * t); } } else rituel(n); };
 window.__famille = () => [...instances.entries()].map(([id, it]) => [id, it.avatar, it.obj.visible, it.obj.position.toArray().map((v) => +v.toFixed(2)), new THREE.Box3().setFromObject(it.obj).getSize(new THREE.Vector3()).toArray().map((v) => +v.toFixed(2))]);
 window.__etat = () => ({ pret: !!mesures.pret, complet: !!mesures.complet, mesures, triangles: renderer.info.render.triangles, etat });
-window.__choisir = (cle, val) => { etat[cle] = val; if (cle === 'style') appliquerStyle(val); if (cle === 'arbre') return planter(val).then(dessiner); dessiner(); };
+window.__choisir = (cle, val) => { etat[cle] = val; if (cle === 'style') appliquerStyle(val); if (cle === 'piece') { zone9.visible = false; amenagerPiece(val); } if (cle === 'arbre') return planter(val).then(dessiner); dessiner(); };
 if (!QS.has('capture')) renderer.setAnimationLoop(() => {
   image(Math.min(horloge.getDelta(), 0.1));
   images++; const t = performance.now();
