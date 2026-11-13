@@ -15,7 +15,11 @@ const $ = (id) => document.getElementById(id);
 // ---------- rendu ----------
 const canvas = $('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// définition de rendu plafonnée : sur un grand écran d'ordinateur (retina, 4K), rendre chaque pixel physique coûte des millions
+// de pixels par image ; on vise au plus ~2,3 millions de pixels, puis la qualité baisse toute seule si les images ralentissent
+const PIXELS_MAX = 2.3e6; let qualite = 1;
+function ratioRendu() { return Math.max(0.6, Math.min(devicePixelRatio, 2, Math.sqrt(PIXELS_MAX / (innerWidth * innerHeight))) * qualite); }
+renderer.setPixelRatio(ratioRendu());
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
@@ -40,7 +44,7 @@ const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 200);
 const controls = new OrbitControls(camera, canvas);
 Object.assign(controls, { enableDamping: true, enablePan: false, minDistance: 5, maxDistance: 34, maxPolarAngle: 1.32, autoRotate: true, autoRotateSpeed: -0.6 });
 
-function taille() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+function taille() { const w = innerWidth, h = innerHeight; renderer.setPixelRatio(ratioRendu()); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 addEventListener('resize', taille); taille();
 
 // ---------- plans de caméra (position, cible, angle de champ) ----------
@@ -78,7 +82,7 @@ const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 const octets = {}; let total = 0;
 function charger(nom, attendu) {
   return loader.loadAsync(M + nom + '.glb', (e) => { octets[nom] = e.loaded; if (attendu) { const fait = Object.values(octets).reduce((a, b) => a + b, 0); $('barre').style.width = Math.min(100, (100 * fait) / attendu) + '%'; } })
-    .then((g) => { g.scene.traverse((m) => { if (m.isMesh) { m.castShadow = !m.material.transparent; m.receiveShadow = true; } }); total += octets[nom] || 0; return g; });
+    .then((g) => { const ombre = !/^(interieur|etage|deco\/|noel\/)/.test(nom); g.scene.traverse((m) => { if (m.isMesh) { m.castShadow = ombre && !m.material.transparent; m.receiveShadow = true; } }); total += octets[nom] || 0; return g; });
 }
 const coques = {}; const decor = {}; const arbres = {};
 
@@ -200,7 +204,7 @@ async function poserDeco(nom) {
     if (p.ech) o.scale.multiply(new THREE.Vector3(...p.ech));
     const pivot = new THREE.Group(); pivot.add(o); o.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3());
     o.position.set(-c.x, -b.min.y, -c.z); pivot.position.set(p.x, p.y, p.z); pivot.rotation.y = p.r; pivot.userData.etage = !!p.etage; pivot.userData.f = p.f;
-    o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true; if (p.verre && p.verre.test(m.name)) m.material = VERRE; if (!p.etage) for (const mt of [].concat(m.material)) mt.clippingPlanes = COUPE_RDC; }); groupe.add(pivot); }));
+    o.traverse((m) => { if (!m.isMesh) return; m.castShadow = false; m.receiveShadow = true; if (p.verre && p.verre.test(m.name)) m.material = VERRE; if (!p.etage) for (const mt of [].concat(m.material)) mt.clippingPlanes = COUPE_RDC; }); groupe.add(pivot); }));
   return groupe;
 }
 // meubles du rez-de-chaussée visibles quand l'intérieur l'est, ceux de l'étage quand l'étage l'est
@@ -266,7 +270,7 @@ function chargerNoel() {
       o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
       const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
       const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(x, y, z); pivot.rotation.y = r || 0; pivot.userData.facade = !!d.facade;
-      o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true;
+      o.traverse((m) => { if (!m.isMesh) return; m.castShadow = /^(sapin|bonhomme|traineau)/.test(d.f); m.receiveShadow = true;
         if (d.brille) { m.material = m.material.clone(); m.material.emissive = new THREE.Color(typeof d.brille === 'string' ? d.brille : '#ffffff'); m.material.emissiveMap = m.material.map; m.material.emissiveIntensity = 1.4; } });
       noel.groupe.add(pivot); } }));
   return noel.charge;
@@ -322,7 +326,7 @@ canvas.addEventListener('pointerup', (ev) => {
 // ---------- vues de la maison ----------
 let vue = null;
 const VUES = {
-  exterieur: { coque: 'exterieur', interieur: true, etage: false, famille: 'exterieur' },
+  exterieur: { coque: 'exterieur', interieur: false, etage: false, famille: 'exterieur' }, // maison fermée : l'intérieur (près d'un million de triangles) n'est pas dessiné
   coupe: { coque: 'coupe', interieur: true, etage: false, famille: 'coupe' },
   etage: { coque: 'etage', interieur: false, etage: true, famille: 'etage' },
 };
@@ -652,7 +656,7 @@ async function demarrer() {
 
 // ---------- boucle ----------
 const panneauMesures = $('mesures'); if (QS.has('mesures')) panneauMesures.hidden = false;
-let images = 0, t0 = performance.now();
+let images = 0, t0 = performance.now(), lent = 0;
 const horloge = new THREE.Clock(); const tmp = new THREE.Vector3();
 function image(dt) {
   for (const mx of mixers) mx.update(dt);
@@ -668,6 +672,8 @@ window.__image = (dt = 0.1) => { if (trajet) trajet.t = 1; avancerTrajet(0); ima
 window.__cadrer = (pos, cible, fov = 40) => { PLANS.test = { pos, cible, fov }; viser('test', true); };
 window.__noelDedans = () => { vueNoel(true); dessiner(); if (trajet) { trajet.t = 1; avancerTrajet(0); } };
 window.__noel = async () => { await ouvrirBoule(); noel.pops.forEach((q) => { q.t = 1; }); avancerNoel(0); if (trajet) { trajet.t = 1; avancerTrajet(0); } };
+window.__lourds = () => { const L = []; scene.traverseVisible((m) => { if (m.isMesh) { let o = m, chemin = ''; while (o.parent && o.parent !== scene) o = o.parent; L.push([((m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3) | 0, m.name, o.name || o.uuid.slice(0, 4), m.castShadow]); } }); const par = {}; for (const [n, , r, c] of L) par[r + (c ? ' (ombre)' : '')] = (par[r + (c ? ' (ombre)' : '')] || 0) + n; return { top: L.sort((a, b) => b[0] - a[0]).slice(0, 15), racines: Object.entries(par).sort((a, b) => b[1] - a[1]).slice(0, 12) }; };
+window.__perf = () => ({ triangles: renderer.info.render.triangles, appels: renderer.info.render.calls, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries, ratio: renderer.getPixelRatio() });
 window.__aller = (n) => { aller(n); if (trajet) { trajet.t = 1; avancerTrajet(0); } };
 window.__rituel = async (n, t = 1) => { if (n === 'plaque') { await ceremonie(); if (trajet) { trajet.t = 1; avancerTrajet(0); } if (croissance) { croissance.t = 0; avancerCroissance(2.6 * t); } } else rituel(n); };
 window.__famille = () => [...instances.entries()].map(([id, it]) => [id, it.avatar, it.obj.visible, it.obj.position.toArray().map((v) => +v.toFixed(2)), new THREE.Box3().setFromObject(it.obj).getSize(new THREE.Vector3()).toArray().map((v) => +v.toFixed(2))]);
@@ -677,6 +683,8 @@ if (!QS.has('capture')) renderer.setAnimationLoop(() => {
   image(Math.min(horloge.getDelta(), 0.1));
   images++; const t = performance.now();
   if (t - t0 > 1000) { const ips = (images * 1000) / (t - t0); images = 0; t0 = t;
+    // moins de 40 images/s deux secondes de suite : on baisse la définition, puis on coupe les ombres douces
+    if (ips < 40 && !document.hidden) { lent++; if (lent >= 2 && qualite > 0.55) { qualite -= 0.15; taille(); lent = 0; } else if (lent >= 2 && renderer.shadowMap.type !== THREE.BasicShadowMap) { renderer.shadowMap.type = THREE.BasicShadowMap; soleil.shadow.mapSize.set(1024, 1024); soleil.shadow.map?.dispose(); soleil.shadow.map = null; lent = 0; } } else lent = 0;
     if (!panneauMesures.hidden) panneauMesures.textContent = ['images/s : ' + ips.toFixed(0), 'triangles : ' + renderer.info.render.triangles.toLocaleString('fr-FR'),
       'prêt en : ' + (mesures.pret ? mesures.pret.toFixed(1) + ' s (' + (mesures.premier / 1e6).toFixed(1) + ' Mo)' : '…'),
       'tout en : ' + (mesures.complet ? mesures.complet.toFixed(1) + ' s (' + (mesures.tout / 1e6).toFixed(1) + ' Mo)' : '…')].join('\n'); }
