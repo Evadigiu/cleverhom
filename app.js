@@ -85,6 +85,7 @@ function charger(nom, attendu) {
     .then((g) => { const ombre = !/^(interieur|etage|deco\/|noel\/)/.test(nom); g.scene.traverse((m) => { if (m.isMesh) { m.castShadow = ombre && !m.material.transparent; m.receiveShadow = true; } }); total += octets[nom] || 0; return g; });
 }
 const coques = {}; const decor = {}; const arbres = {};
+let dernierChargement = 0; // instant du dernier modèle ajouté (la mesure d'images/s l'ignore)
 
 // ---------- la famille du joueur ----------
 // emplacements (x, y, z, orientation) pour les personnes puis les animaux, dans chaque vue
@@ -121,11 +122,14 @@ async function synchroniserFamille() {
     const g = await modele(m.avatar); if (etat.membres.find((x) => x.id === m.id)?.avatar !== m.avatar) return;
     const old = instances.get(m.id); if (old) { scene.remove(old.obj); if (old.mixer) mixers.delete(old.mixer); }
     let obj, mixer = null;
-    if (ANIMAUX[m.avatar]) { obj = new THREE.Group(); const c = g.scene.clone(true); obj.add(c); const bb = new THREE.Box3().setFromObject(c); c.scale.setScalar(ANIMAUX[m.avatar].h / (bb.max.y - bb.min.y)); c.updateMatrixWorld(true); const b2 = new THREE.Box3().setFromObject(c); const cc = b2.getCenter(new THREE.Vector3()); c.position.set(-cc.x, -b2.min.y, -cc.z); }
-    else { obj = SkeletonUtils.clone(g.scene); if (g.animations[0]) { mixer = new THREE.AnimationMixer(obj); mixer.clipAction(g.animations[0]).play(); mixer.setTime(Math.random() * 3); mixers.add(mixer); } }
+    if (ANIMAUX[m.avatar]) { obj = new THREE.Group(); const c = SkeletonUtils.clone(g.scene); obj.add(c); const bb = new THREE.Box3().setFromObject(c); c.scale.setScalar(ANIMAUX[m.avatar].h / (bb.max.y - bb.min.y)); c.updateMatrixWorld(true); const b2 = new THREE.Box3().setFromObject(c); const cc = b2.getCenter(new THREE.Vector3()); c.position.set(-cc.x, -b2.min.y, -cc.z); }
+    else { obj = SkeletonUtils.clone(g.scene); if (g.animations[0]) { mixer = new THREE.AnimationMixer(obj); mixer.clipAction(g.animations[0]).play(); mixer.setTime(Math.random() * 3); } }
     obj.traverse((x) => { if (x.isMesh) { x.castShadow = true; x.frustumCulled = false; } });
     obj.updateMatrixWorld(true); const h = new THREE.Box3().setFromObject(obj).max.y;
-    scene.add(obj); instances.set(m.id, { avatar: m.avatar, obj, mixer, h });
+    try { await renderer.compileAsync(obj, camera, scene); } catch (e) { /* ancien navigateur : compilation à la première image */ }
+    if (etat.membres.find((x) => x.id === m.id)?.avatar !== m.avatar) return;
+    const deja = instances.get(m.id); if (deja) { scene.remove(deja.obj); if (deja.mixer) mixers.delete(deja.mixer); }
+    dernierChargement = performance.now(); if (mixer) mixers.add(mixer); scene.add(obj); instances.set(m.id, { avatar: m.avatar, obj, mixer, h });
   }));
   placerFamille();
 }
@@ -684,7 +688,8 @@ if (!QS.has('capture')) renderer.setAnimationLoop(() => {
   images++; const t = performance.now();
   if (t - t0 > 1000) { const ips = (images * 1000) / (t - t0); images = 0; t0 = t;
     // moins de 40 images/s deux secondes de suite : on baisse la définition, puis on coupe les ombres douces
-    if (ips < 40 && !document.hidden) { lent++; if (lent >= 2 && qualite > 0.55) { qualite -= 0.15; taille(); lent = 0; } else if (lent >= 2 && renderer.shadowMap.type !== THREE.BasicShadowMap) { renderer.shadowMap.type = THREE.BasicShadowMap; soleil.shadow.mapSize.set(1024, 1024); soleil.shadow.map?.dispose(); soleil.shadow.map = null; lent = 0; } } else lent = 0;
+    // (pas pendant un chargement : la première image d'un nouveau modèle est toujours lente)
+    if (ips < 40 && !document.hidden && performance.now() - dernierChargement > 3000) { lent++; if (lent >= 2 && qualite > 0.55) { qualite -= 0.15; taille(); lent = 0; } } else lent = 0;
     if (!panneauMesures.hidden) panneauMesures.textContent = ['images/s : ' + ips.toFixed(0), 'triangles : ' + renderer.info.render.triangles.toLocaleString('fr-FR'),
       'prêt en : ' + (mesures.pret ? mesures.pret.toFixed(1) + ' s (' + (mesures.premier / 1e6).toFixed(1) + ' Mo)' : '…'),
       'tout en : ' + (mesures.complet ? mesures.complet.toFixed(1) + ' s (' + (mesures.tout / 1e6).toFixed(1) + ' Mo)' : '…')].join('\n'); }
