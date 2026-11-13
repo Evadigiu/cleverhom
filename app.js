@@ -528,8 +528,12 @@ const ECRANS = {
     clic: (id, el) => {
       const m = membreActif();
       if (el.dataset.type) { const animal = el.dataset.type === 'animal'; if (animal !== (m.type === 'animal')) { m.type = animal ? 'animal' : (categorieAge(m.age) || 'adulte'); m.avatar = visages(m.type)[0]; m.habitudes = []; if (animal) m.age = ''; synchroniserFamille(); } return; }
-      if (el.dataset.avatar) { m.avatar = el.dataset.avatar; synchroniserFamille(); return; }
+      if (el.dataset.avatar) { m.avatar = el.dataset.avatar; synchroniserFamille();
+        if (el.classList.contains('portrait') || el.classList.contains('animal')) { for (const x of $('visages').querySelectorAll('[data-avatar]')) if (!x.classList.contains('teint')) x.setAttribute('aria-pressed', String(x === el)); }
+        else $('visages').innerHTML = visagesHtml(m); // changement de teint : les portraits changent d'image
+        $('puces').innerHTML = ECRANS[ecran].puces().map(puceHtml).join(''); return 'partiel'; }
       const i = m.habitudes.indexOf(id); if (i >= 0) m.habitudes.splice(i, 1); else m.habitudes.push(id);
+      el.setAttribute('aria-pressed', String(i < 0)); return 'partiel';
     },
     suite: () => 'Entrer dans la maison', pret: () => true,
   },
@@ -611,7 +615,7 @@ $('puces').addEventListener('click', (ev) => {
   const x = ev.target.closest('[data-suppr]');
   if (x) { const id = x.dataset.suppr; etat.membres = etat.membres.filter((m) => m.id !== id); if (etat.membre === id) etat.membre = etat.membres[0].id; synchroniserFamille(); dessiner(); return; }
   const b = ev.target.closest('.puce'); if (!b) return; ECRANS[ecran].puce(b.dataset.id); dessiner(); });
-$('contenu').addEventListener('click', (ev) => { const b = ev.target.closest('[data-id],[data-type],[data-avatar],[data-action]'); if (!b || !ECRANS[ecran].clic) return; ECRANS[ecran].clic(b.dataset.id, b); dessiner(); });
+$('contenu').addEventListener('click', (ev) => { const b = ev.target.closest('[data-id],[data-type],[data-avatar],[data-action]'); if (!b || !ECRANS[ecran].clic) return; if (ECRANS[ecran].clic(b.dataset.id, b) !== 'partiel') dessiner(); });
 let attenteAge = null;
 $('contenu').addEventListener('change', (ev) => { if (ev.target.id === 'prenom-m') { const m = membreActif(); m.prenom = ev.target.value.trim() ? ev.target.value : ''; $('puces').innerHTML = ECRANS[ecran].puces().map(puceHtml).join(''); } });
 $('contenu').addEventListener('input', (ev) => {
