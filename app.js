@@ -702,9 +702,10 @@ const CACHETTES = [
   { id: 'jardiniere', nom: 'la jardinière', long: 1.25, p: [-2.4, -0.32, 6.62, Math.PI] },           // Planter Box 02 (Poly Haven)
   { id: 'pot', nom: 'le grand pot', haut: 1.05, p: [-3.4, -0.12, 0.4, 0.3] },                         // Potted Plant 01 (Poly Haven)
   { id: 'bottes', nom: 'les bottes', haut: 0.37, p: [-0.62, -0.12, 0.42, -Math.PI / 2] },              // Rubber Boots (Poly Haven)
-  { id: 'ballon', nom: 'le ballon', haut: 0.3, p: [-6.9, -0.32, 5.9, 0] },                           // Football (Poly Haven)
+  { id: 'ballon', nom: 'le ballon', haut: 0.3, p: [-6.7, -0.32, 4.9, 0] },                           // Football (Poly Haven)
   { id: 'brasero', nom: 'le brasero', long: 1.3, p: [-7.6, -0.32, 2.5, 0] },                          // Stone Fire Pit (Poly Haven)
   { id: 'brouette', nom: 'la brouette', long: 1.35, p: [-5.7, -0.32, 6.45, 0.25] },                     // Wheelbarrow (Eleanie)
+  { id: 'balancelle', nom: 'la balancelle', long: 2.1, p: [-8.0, -0.32, 6.15, 0] },              // Swing Bench (johhny_3D), dos à la haie, face au jardin
   { id: 'arrosoir', nom: "l'arrosoir", haut: 0.5, p: [-1.15, -0.32, -1.75, 0.5] },                    // Watering Can (taipl)
 ];
 // cinq érables alignés le long de la bordure gauche du jardin, de la maison jusqu'à la clôture du fond (Maple tree, atrodler)
