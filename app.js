@@ -336,12 +336,17 @@ const JARDIN = [
   { f: 'chaise_longue', long: 1.75, p: [-3.05, -0.32, -1.3, Math.PI / 2] },   // Garden Lounge (scailman) : dossier vers la maison, pieds vers le jardin
   { f: 'jacinthe', haut: 0.55, p: [-2.25, 0.0, 3.85, 0] },                    // Hyacinth (scadl)
 ];
+// massif de fleurs (Garden Flower, ragukgr) le long du garage : côté jardin (x ≈ -1,5) puis le long du mur du fond (z ≈ -3,55)
+const GARAGE = { x0: -1.2, x1: 5.1, z0: -3.25, z1: -0.3 };
+for (let z = GARAGE.z1 - 0.15, i = 0; z > GARAGE.z0 - 0.1; z -= 0.7, i++) JARDIN.push({ f: 'fleurs', long: 0.9 + (i % 3) * 0.08, p: [GARAGE.x0 - 0.42, -0.32, z, i * 1.7] });
+for (let x = GARAGE.x0 - 0.3, i = 0; x < GARAGE.x1 + 0.1; x += 0.7, i++) JARDIN.push({ f: 'fleurs', long: 0.9 + ((i + 1) % 3) * 0.08, p: [x, -0.32, GARAGE.z0 - 0.42, i * 2.3] });
 function poserJardin() {
-  for (const d of JARDIN) charger('deco/' + d.f).then((g) => { const o = g.scene; const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+  const modeles = {}; for (const d of JARDIN) (modeles[d.f] ||= charger('deco/' + d.f)).then((g) => { const o = g.scene.clone(true); const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
     o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
     const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(d.p[0], d.p[1], d.p[2]); pivot.rotation.y = d.p[3];
-    o.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); scene.add(pivot); });
+    o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true;
+      if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.25; m.material.depthWrite = true; } }); scene.add(pivot); });
 }
 
 // ---------- vues de la maison ----------
