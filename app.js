@@ -700,7 +700,7 @@ const CACHETTES = [
   { id: 'pot', nom: 'le grand pot', haut: 1.05, p: [-3.4, -0.12, 0.4, 0.3] },                         // Potted Plant 01 (Poly Haven)
   { id: 'bottes', nom: 'les bottes', haut: 0.37, p: [-0.62, -0.12, 0.42, -Math.PI / 2] },              // Rubber Boots (Poly Haven)
   { id: 'mangeoire', nom: 'la mangeoire', haut: 1.5, p: [-4.9, -0.32, -3.1, 0.4] },                    // SIMPLE bird feeder (sinnervoncrawsz), près des érables
-  { id: 'rateau', nom: 'le râteau', haut: 1.5, debout: true, p: [-0.4, -0.12, -0.08, 0] },            // Gardener's Rake (incg5764), appuyé contre le bardage à gauche des bottes
+  { id: 'rateau', nom: 'le râteau', haut: 1.5, debout: true, p: [-0.42, -0.32, -0.08, 0] },            // Gardener's Rake (incg5764), appuyé contre le bardage à gauche des bottes
   { id: 'gnome', nom: 'le nain de jardin', haut: 0.55, p: [-1.7, -0.32, -0.75, -Math.PI / 2] },          // Mesh Garden Gnome (berriers), près des fleurs et de la chaise longue
   { id: 'foot', nom: 'le ballon', haut: 0.22, p: [-7.2, -0.32, 3.0, 0.6] },                            // Soccer Ball (vanart), au milieu de la pelouse
   { id: 'balancelle', nom: 'la balancelle', long: 2.1, p: [-8.0, -0.32, 6.15, Math.PI] },              // Swing Bench (johhny_3D), dos à la haie, face au jardin
