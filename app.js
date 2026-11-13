@@ -56,6 +56,7 @@ const PLANS = {
   salon: { pos: [-4.6, 11.8, 8.6], cible: [3.2, -0.3, 2.4], fov: 46 }, // pivot au centre du rez-de-chaussée, entre la table et la cuisine
   etage: { pos: [-16.4, 32.7, -2.6], cible: [5.2, 2.9, 1.6], fov: 25 }, // centré sur la pièce de 9 m²
   aventures: { pos: [-22, 9, -6], cible: [1.0, -3.2, 3.2], fov: 46 },
+  cles: { pos: [-16, 13.5, 2.4], cible: [-4.9, -0.5, 2.4], fov: 60 }, // tout le jardin, vu depuis le fond
   noel: { pos: [-12.2, 2.3, 7.2], cible: [-6.4, 0.25, 3.1], fov: 46 },
   noelDehors: { pos: [-15, 4.0, 6.8], cible: [-2.2, 1.1, 2.0], fov: 50 },
   fete: { pos: [-3.8, 9.6, 9.8], cible: [3.4, 0.2, 3.4], fov: 52 },
@@ -378,6 +379,7 @@ async function poserMassif() {
       im.castShadow = true; im.receiveShadow = true; scene.add(im); }); }));
 }
 let livres = null; // cachés pendant Noël
+const jardinPivots = {}; // premier exemplaire de chaque objet du jardin (cachettes de la chasse aux clés)
 // le modèle du jardin : on retire l'ancien salon de jardin (chaises pliantes, parasol) et on fait courir la haie entre les deux maisons,
 // du volume en bois jusqu'à la clôture du fond (elle était à la limite de l'ancienne maison jumelle)
 function amenagerJardin(j) {
@@ -392,7 +394,7 @@ function poserJardin() {
   const modeles = {}; for (const d of JARDIN) (modeles[d.f] ||= charger('deco/' + d.f)).then((g) => { const o = g.scene.clone(true); const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
     o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
-    const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(d.p[0], d.p[1], d.p[2]); pivot.rotation.y = d.p[3]; if (d.f === 'livres') livres = pivot;
+    const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(d.p[0], d.p[1], d.p[2]); pivot.rotation.y = d.p[3]; if (d.f === 'livres') livres = pivot; jardinPivots[d.f] ||= pivot;
     o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true;
       if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.25; m.material.depthWrite = true; } }); scene.add(pivot); });
 }
@@ -687,6 +689,82 @@ function arreterNaissance() {
   placerFamille();
 }
 
+// ---------- chasse aux clés : trois clés cachées dans le jardin, à trouver en touchant les objets ----------
+// objets ajoutés au jardin (Poly Haven CC0 et Sketchfab CC BY) ; ils restent en place pour tout le parcours
+const CACHETTES = [
+  { id: 'nain', nom: 'le nain de jardin', haut: 0.75, p: [-6.6, -0.32, 1.7, -Math.PI / 2] },           // Garden Gnome (Poly Haven)
+  { id: 'nichoir', nom: 'la petite maison', haut: 0.5, p: [-7.15, -0.32, 0.55, -Math.PI / 2] },      // Bird house (alban)
+  { id: 'jardiniere', nom: 'la jardinière', long: 1.25, p: [-2.4, -0.32, 6.62, Math.PI] },           // Planter Box 02 (Poly Haven)
+  { id: 'pot', nom: 'le grand pot', haut: 1.05, p: [-3.4, -0.12, 0.4, 0.3] },                         // Potted Plant 01 (Poly Haven)
+  { id: 'bottes', nom: 'les bottes', haut: 0.37, p: [-0.62, -0.12, 0.42, -Math.PI / 2] },              // Rubber Boots (Poly Haven)
+  { id: 'ballon', nom: 'le ballon', haut: 0.3, p: [-6.9, -0.32, 5.9, 0] },                           // Football (Poly Haven)
+  { id: 'brasero', nom: 'le brasero', long: 1.3, p: [-7.6, -0.32, 2.5, 0] },                          // Stone Fire Pit (Poly Haven)
+  { id: 'brouette', nom: 'la brouette', long: 1.35, p: [-5.7, -0.32, 6.45, 0.25] },                     // Wheelbarrow (Eleanie)
+  { id: 'arrosoir', nom: "l'arrosoir", haut: 0.5, p: [-1.15, -0.32, -1.75, 0.5] },                    // Watering Can (taipl)
+];
+const ARBRES_EN_PLUS = [{ id: 'lilas', nom: 'le lilas', p: [-9.0, -0.32, -0.9] }, { id: 'noisetier', nom: 'le noisetier', p: [-9.2, -0.32, 4.4] }];
+const DEJA_LA = { chaise_longue: 'la chaise longue', livres: 'la pile de livres', jacinthe: 'la jacinthe', table_jardin: 'la table' };
+const cles = { objets: [], cle: null, avec: new Set(), trouvees: 0, temps: 45, en_cours: false, fini: false, anims: [] };
+async function poserCachettes() {
+  const poser = (o, d) => { const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3()); o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z); const pv = new THREE.Group(); pv.add(o); return pv; };
+  await Promise.all(CACHETTES.map(async (d) => { const g = await charger('cles/' + d.id); const pv = poser(g.scene, d); pv.position.set(d.p[0], d.p[1], d.p[2]); pv.rotation.y = d.p[3];
+    pv.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.4; m.material.depthWrite = true; } } });
+    scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); }));
+  // deux arbres de plus au fond du jardin, pris parmi les arbres du rituel
+  await Promise.all(ARBRES_EN_PLUS.map(async (d) => { const g = await charger('arbres/' + d.id); const o = g.scene.clone(true); o.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.sub(new THREE.Vector3(c.x, b.min.y, c.z));
+    const pv = new THREE.Group(); pv.add(o); pv.position.set(d.p[0], d.p[1], d.p[2]); o.traverse((m) => { if (m.isMesh) m.castShadow = true; }); scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); }));
+  const g = await charger('cles/cle'); cles.cle = poser(g.scene, { long: 0.32 }); cles.cle.visible = false;
+  cles.cle.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.emissive = new THREE.Color('#ffcf4a'); m.material.emissiveIntensity = 0.35; } }); scene.add(cles.cle);
+}
+// zone de toucher invisible autour de chaque cachette : sur un téléphone, viser un petit objet au doigt est difficile
+const ZONE_TOUCHER = new THREE.MeshBasicMaterial({ visible: false });
+function zoneToucher(o) { if (o.userData.zone) return; const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()), t = b.getSize(new THREE.Vector3());
+  const r = Math.max(0.55, Math.max(t.x, t.y, t.z) * 0.6); const z = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), ZONE_TOUCHER); z.scale.set(Math.max(r, t.x * 0.6), Math.max(r, t.y * 0.6), Math.max(r, t.z * 0.6));
+  z.position.copy(o.worldToLocal(c.clone())); z.scale.divide(o.getWorldScale(new THREE.Vector3())); o.add(z); o.userData.zone = z; }
+function lancerChasse() {
+  for (const [f, nom] of Object.entries(DEJA_LA)) if (jardinPivots[f] && !cles.objets.some((o) => o.id === f)) cles.objets.push({ id: f, nom, o: jardinPivots[f] });
+  for (const o of cles.objets) if (!/^(lilas|noisetier)$/.test(o.id)) zoneToucher(o.o); // les arbres sont déjà assez grands
+  const dispo = cles.objets.filter((o) => o.o.parent); const melange = dispo.map((o) => [Math.random(), o]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+  cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.trouvees = 0; cles.temps = 45; cles.en_cours = true; cles.fini = false; cles.indice = false; dessiner();
+}
+function message(txt) { let t = $('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = txt; t.classList.remove('vu'); void t.offsetWidth; t.classList.add('vu'); }
+function fouiller(obj) {
+  // l'objet tremble ; s'il cache une clé, elle s'envole en tournant
+  cles.anims.push({ o: obj.o, t: 0, r0: obj.o.rotation.y, type: 'secoue' });
+  if (cles.avec.has(obj.id)) { cles.avec.delete(obj.id); cles.trouvees++;
+    const b = new THREE.Box3().setFromObject(obj.o); const k = cles.cle.clone(); k.visible = true; k.position.set((b.min.x + b.max.x) / 2, Math.min(b.max.y, 1.6) + 0.15, (b.min.z + b.max.z) / 2); scene.add(k);
+    cles.anims.push({ o: k, t: 0, y0: k.position.y, type: 'cle' });
+    message(cles.trouvees < 3 ? `Une clé sous ${obj.nom} ! 🔑` : 'Les 3 clés ! 🎉');
+    if (cles.trouvees >= 3) { cles.en_cours = false; cles.fini = true; setTimeout(confettis, 600); }
+    dessiner(); }
+  else message(`Rien sous ${obj.nom}…`);
+}
+let appui = null;
+canvas.addEventListener('pointerdown', (ev) => { appui = [ev.clientX, ev.clientY]; });
+canvas.addEventListener('pointerup', (ev) => {
+  if (ecran !== 'cles' || !(cles.en_cours || (cles.indice && !cles.fini)) || !appui || Math.hypot(ev.clientX - appui[0], ev.clientY - appui[1]) > 10) return; // un glissé fait tourner la vue, ce n'est pas un toucher
+  souris.set((ev.clientX / innerWidth) * 2 - 1, -(ev.clientY / innerHeight) * 2 + 1); rayon.setFromCamera(souris, camera);
+  const h = rayon.intersectObjects(cles.objets.map((o) => o.o), true)[0]; if (!h) return;
+  const obj = cles.objets.find((x) => { let o = h.object; while (o) { if (o === x.o) return true; o = o.parent; } return false; }); if (obj) fouiller(obj);
+});
+function avancerCles(dt) {
+  for (const a of cles.anims) { a.t += dt;
+    if (a.type === 'secoue') a.o.rotation.y = a.r0 + Math.sin(a.t * 40) * 0.12 * Math.max(0, 1 - a.t / 0.45);
+    if (a.type === 'cle') { a.o.position.y = a.y0 + Math.min(1, a.t / 0.8) * 0.7; a.o.rotation.y += dt * 6; a.o.scale.setScalar(1 + Math.min(1, a.t / 0.8) * 0.6); if (a.t > 1.6) a.o.removeFromParent(); }
+    if (a.type === 'indice') a.o.position.y = a.y0 + Math.abs(Math.sin(a.t * 5)) * 0.18; }
+  cles.anims = cles.anims.filter((a) => (a.type === 'secoue' ? a.t < 0.45 : a.type === 'cle' ? a.t <= 1.6 : !cles.fini));
+  if (!cles.en_cours) return;
+  const avant = Math.ceil(cles.temps); cles.temps = Math.max(0, cles.temps - dt);
+  if (Math.ceil(cles.temps) !== avant && ecran === 'cles') $('intitule').textContent = ECRANS.cles.intitule();
+  if (cles.temps <= 0) { // temps écoulé : personne ne repart bredouille, les cachettes restantes sautillent pour se montrer
+    cles.en_cours = false; cles.indice = true; message('Temps écoulé ! Les clés se montrent…');
+    for (const o of cles.objets) if (cles.avec.has(o.id)) cles.anims.push({ o: o.o, t: 0, y0: o.o.position.y, type: 'indice' }); dessiner(); }
+}
+function arreterChasse() { cles.en_cours = false; for (const a of cles.anims) if (a.type === 'indice') a.o.position.y = a.y0; cles.anims = []; }
+
 // ---------- vues de la maison ----------
 let vue = null;
 const VUES = {
@@ -825,7 +903,7 @@ function visagesHtml(m) {
       : `<button type="button" class="portrait" data-avatar="${V[x] ? V[x][iTeint] : x}" aria-pressed="${m.avatar === x || base === x}" aria-label="Personnage ${x}"><img src="assets/avatars/${V[x] ? V[x][iTeint] : x}.webp" alt="" width="64" height="64" loading="lazy"></button>`).join('')}</div>`
     + (base ? `<div class="teints"><span>Teint</span>${V[base].map((v, i) => `<button type="button" class="teint" data-avatar="${v}" aria-pressed="${i === iTeint}" aria-label="Teint ${CATALOGUE.teints.noms[i].toLowerCase()}" style="background:${CATALOGUE.teints.couleurs[i]}"></button>`).join('')}</div>` : '');
 }
-const ORDRE = ['accueil', 'arbre', 'famille', 'style', 'etage', 'aventures', 'fiche'];
+const ORDRE = ['accueil', 'arbre', 'famille', 'style', 'etage', 'cles', 'aventures', 'fiche'];
 const ECRANS = {
   arbre: {
     vue: 'exterieur', famille: false, plan: 'arbre', etape: '1/4',
@@ -898,6 +976,14 @@ const ECRANS = {
     clic: (id) => { etat.aventure = id; if (id === 'noel') { chargerNoel(); montrerBoule(); } if (id === 'fete') chargerFete(); if (id === 'bebe') chargerNaissance(); },
     suite: () => etat.aventure ? 'Commencer l’aventure' : 'Voir ma maison', pret: () => !!etat.aventure,
   },
+  cles: {
+    vue: 'exterieur', plan: 'cles', etape: '🔑',
+    intitule: () => cles.fini ? 'La maison est à vous !' : cles.en_cours ? `Clés : ${cles.trouvees}/3 · ${Math.ceil(cles.temps)} s` : cles.indice ? `Clés : ${cles.trouvees}/3 · touchez ce qui bouge` : 'La chasse aux clés',
+    contenu: () => cles.fini ? `<div class="cadeau"><b>🎁 Bravo, vous avez trouvé les 3 clés !</b><span>Un cadeau vous attend : présentez cet écran à votre conseiller Clever’hom.</span></div>`
+      : (cles.en_cours || cles.indice) ? `<div class="trousseau">${[0, 1, 2].map((i) => `<i class="${i < cles.trouvees ? 'ok' : ''}">🔑</i>`).join('')}</div>`
+      : `<p class="accroche">Trois clés sont cachées dans le jardin. Touchez les objets pour les trouver : vous avez 45 secondes !</p>`,
+    suite: () => cles.fini || cles.indice ? 'Continuer' : cles.en_cours ? 'Cherchez les clés…' : 'Commencer', pret: () => !cles.en_cours,
+  },
   fete: {
     vue: 'coupe', plan: 'fete', etape: '🥂',
     intitule: () => fete.faite && !fete.pret ? 'Les invités arrivent…' : 'Touchez un invité !',
@@ -942,6 +1028,7 @@ function aller(nom) {
   if (noel.fait && nom !== 'noel' && nom !== 'fiche') cacherNoel();
   if (fete.faite && nom !== 'fete' && nom !== 'fiche') arreterFete();
   if (nais.faite && nom !== 'naissance' && nom !== 'fiche') arreterNaissance();
+  if (nom !== 'cles') arreterChasse();
   if (nom === 'fiche' && noel.groupe) for (const p of noel.groupe.children) if (p.userData.facade) p.visible = true;
   if (nom !== 'fete') arreterMusique(); // l'écran de fin doit capter l'attention : plus de musique
   ecran = nom; document.body.dataset.ecran = nom; synchroniserFamille();
@@ -1002,6 +1089,7 @@ $('rituel-choisir').addEventListener('click', () => rituel(null));
 for (const r of ['rituel-intro', 'rituel-plaque']) $(r).addEventListener('click', (ev) => { if (!ev.target.closest('button')) $(r).classList.add('tout'); });
 $('rituel-famille').addEventListener('click', () => { if (croissance) { croissance.t = 1; avancerCroissance(0); } rituel(null); aller('famille'); });
 $('suite').addEventListener('click', () => {
+  if (ecran === 'cles' && !cles.fini && !cles.indice) { lancerChasse(); return; }
   if (ecran === 'fiche') { if (etat.envoye) { location.reload(); return; } etat.envoye = true; dessiner(); return; }
   if (ecran === 'arbre') { ceremonie(); return; }
   if (ecran === 'famille') { // le prénom du joueur est demandé ; on relit le champ (le remplissage automatique d'iOS ne prévient pas toujours)
@@ -1025,7 +1113,7 @@ async function demarrer() {
   const ATTENDU = 4.6e6; // maison, jardin et famille de départ
   for (const m of etat.membres.concat(VITRINE)) octets[m.avatar] = 0;
   const [ext, jardin] = await Promise.all(['maison-exterieur', 'jardin'].map((n) => charger(n, ATTENDU)));
-  coques.exterieur = ext.scene; scene.add(ext.scene, jardin.scene); amenagerJardin(jardin.scene); poserJardin(); poserMassif();
+  coques.exterieur = ext.scene; scene.add(ext.scene, jardin.scene); amenagerJardin(jardin.scene); poserJardin(); poserMassif(); poserCachettes();
   vue = 'exterieur'; await synchroniserFamille();
   montrer('exterieur'); viser('accueil', true);
   mesures.pret = (performance.now() - DEBUT) / 1000; mesures.premier = total;
@@ -1052,7 +1140,7 @@ let images = 0, t0 = performance.now(), lent = 0;
 const horloge = new THREE.Clock(); const tmp = new THREE.Vector3();
 function image(dt) {
   for (const mx of mixers) mx.update(dt);
-  avancerTrajet(dt); avancerCroissance(dt); avancerNoel(dt); avancerFete(dt); avancerNaissance(dt); controls.update(); renderer.render(scene, camera);
+  avancerTrajet(dt); avancerCroissance(dt); avancerNoel(dt); avancerFete(dt); avancerNaissance(dt); avancerCles(dt); controls.update(); renderer.render(scene, camera);
   const b = ECRANS[ecran]?.bulle; const bulle = $('bulle');
   if (b && !trajet) { tmp.set(...b.p).project(camera); bulle.hidden = tmp.z > 1; bulle.textContent = b.t; bulle.style.left = ((tmp.x + 1) / 2) * innerWidth + 'px'; bulle.style.top = ((1 - tmp.y) / 2) * innerHeight + 'px';
     // pas de bulle par-dessus le bandeau ou le panneau (petits écrans) : elle cacherait les boutons
@@ -1070,6 +1158,8 @@ window.__perf = () => ({ triangles: renderer.info.render.triangles, appels: rend
 window.__tuile = (W, H, x, y, w, h) => { renderer.setPixelRatio(1); renderer.setSize(w, h, false); canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
   camera.aspect = W / H; camera.setViewOffset(W, H, x, y, w, h); camera.updateProjectionMatrix(); renderer.render(scene, camera); };
 window.__bureau = () => { const L = []; decor.etage?.traverse((m) => { if (/bureau/.test(m.name)) L.push(m.type + ':' + m.name + ':' + m.visible); }); return L.join(' | ') + ' // posés ' + Object.keys(piecePosee).join(','); };
+window.__cles = (t = 1) => { for (let i = 0; i < t * 20; i++) avancerCles(0.05); };
+window.__fouiller = (id) => { const o = cles.objets.find((x) => x.id === id || (id === 'cle' && cles.avec.has(x.id))); if (o) fouiller(o); return o?.id; };
 window.__fete = (t = 12) => { for (let i = 0; i < t * 10; i++) avancerFete(0.1); };
 window.__naissance = (t = 12) => { for (let i = 0; i < t * 20; i++) avancerNaissance(0.05); };
 window.__aller = (n) => { aller(n); if (trajet) { trajet.t = 1; avancerTrajet(0); } };

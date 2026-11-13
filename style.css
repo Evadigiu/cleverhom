@@ -223,3 +223,13 @@ body[data-ecran="arbre"] .question .intitule { margin-bottom: 0; }
 /* page de fin : formulaire */
 .accroche { margin: 0 0 8px; font-size: 13.5px; line-height: 1.35; font-weight: 600; }
 .champs.compact + .champs.compact, .champs.compact + .consentement, .consentement + .consentement { margin-top: 6px; }
+
+/* chasse aux clés */
+.trousseau { display: flex; justify-content: center; gap: 18px; font-size: 30px; }
+.trousseau i { font-style: normal; filter: grayscale(1); opacity: 0.35; transition: all 0.3s; }
+.trousseau i.ok { filter: none; opacity: 1; transform: scale(1.15); }
+.cadeau { display: flex; flex-direction: column; gap: 4px; background: var(--vert-pale); border-radius: 14px; padding: 12px 14px; font-size: 13.5px; line-height: 1.35; }
+.cadeau b { font-size: 15px; }
+.toast { position: fixed; left: 50%; top: 92px; transform: translateX(-50%); background: rgba(30, 30, 30, 0.82); color: #fff; padding: 8px 14px; border-radius: 20px; font: 600 14px var(--police); pointer-events: none; opacity: 0; z-index: 40; white-space: nowrap; }
+.toast.vu { animation: toast 2.2s ease forwards; }
+@keyframes toast { 0% { opacity: 0; transform: translate(-50%, -6px); } 12% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; } 100% { opacity: 0; } }

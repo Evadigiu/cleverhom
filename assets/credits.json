@@ -623,11 +623,41 @@
    "auteur": "Tezz",
    "licence": "CC Attribution",
    "lien": "https://sketchfab.com/3d-models/dc765e3351fa4be1ac33011d5100144e"
+  },
+  {
+   "nom": "Watering Can",
+   "auteur": "taipl",
+   "licence": "CC Attribution",
+   "lien": "https://sketchfab.com/3d-models/2f2283cf4b5946488d05e744c86826ee"
+  },
+  {
+   "nom": "Wheelbarrow",
+   "auteur": "Eleanie",
+   "licence": "CC Attribution",
+   "lien": "https://sketchfab.com/3d-models/293c5eb89d324348903ed572f65b5e3f"
+  },
+  {
+   "nom": "Bird house",
+   "auteur": "alban",
+   "licence": "CC Attribution",
+   "lien": "https://sketchfab.com/3d-models/4841c877ae9f4cf7b0f1f50306861a31"
+  },
+  {
+   "nom": "the Golden Key",
+   "auteur": "3DisFUNny",
+   "licence": "CC Attribution",
+   "lien": "https://sketchfab.com/3d-models/16c6d58a74764ef9a8bda39408bcf0b8"
   }
  ],
  "polyhaven": [
   "pachira_aquatica_01",
-  "potted_plant_02"
+  "potted_plant_02",
+  "garden_gnome",
+  "planter_box_02",
+  "potted_plant_01",
+  "rubber_boots",
+  "football",
+  "stone_fire_pit"
  ],
  "rocketbox": "Microsoft Rocketbox Avatar Library (licence MIT)"
 }
