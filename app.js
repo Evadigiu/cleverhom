@@ -30,15 +30,15 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const ECHELLE = 0.9;
 const scene = new THREE.Scene();
 // ciel de fin de journée : bleu profond en haut, dégradé vers l'orangé à l'horizon, halo du côté du soleil couchant
-scene.background = new THREE.Color('#efd4b8');
-scene.fog = new THREE.Fog('#efd4b8', 45, 150); // même teinte que le bas du ciel : l'horizon se fond sans trait
+scene.background = new THREE.Color('#ffd194');
+scene.fog = new THREE.Fog('#ffd194', 55, 150); // même teinte que le bas du ciel : l'horizon se fond sans trait
 const cielDome = new THREE.Mesh(new THREE.SphereGeometry(160, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false,
   uniforms: { soleilDir: { value: new THREE.Vector3(-10, 8, -15).normalize() } },
   vertexShader: 'varying vec3 vd; void main() { vd = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: `uniform vec3 soleilDir; varying vec3 vd;
     void main() { float h = clamp(vd.y, -0.1, 1.0);
-      vec3 haut = vec3(0.36, 0.53, 0.80), milieu = vec3(0.86, 0.78, 0.76), bas = vec3(0.94, 0.83, 0.72);
-      vec3 c = h < 0.12 ? mix(bas, milieu, smoothstep(0.0, 0.12, h)) : mix(milieu, haut, smoothstep(0.12, 0.5, h));
+      vec3 haut = vec3(0.30, 0.50, 0.82), milieu = vec3(0.55, 0.70, 0.90), bas = vec3(1.0, 0.82, 0.58);
+      vec3 c = h < 0.06 ? mix(bas, milieu, smoothstep(-0.01, 0.06, h)) : mix(milieu, haut, smoothstep(0.06, 0.45, h));
       float s = max(dot(normalize(vd), soleilDir), 0.0); c += vec3(1.0, 0.55, 0.2) * (pow(s, 6.0) * 0.45 + pow(s, 60.0) * 0.6);
       gl_FragColor = vec4(c, 1.0); }` }));
 cielDome.renderOrder = -1; cielDome.frustumCulled = false; scene.add(cielDome);
@@ -757,7 +757,7 @@ function lancerChasse() {
   // les clés ne se cachent que dans la partie du jardin bien visible : ni le long du côté de la maison (érables), ni derrière
   const accessible = (o) => { const c = new THREE.Box3().setFromObject(o.o).getCenter(new THREE.Vector3()); return c.z > -1.3 && c.x < -0.2 && c.x > -9.2; };
   const dispo = cles.objets.filter((o) => o.o.parent && o.o.visible && accessible(o)); const melange = dispo.map((o) => [Math.random(), o]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
-  cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.joue = true; cles.trouvees = 0; cles.temps = DUREE_JEU; cles.en_cours = true; cles.fini = false; cles.indice = false; cles.debut = performance.now(); son('go'); setTimeout(() => musiqueJeu(true), 450); dessiner(); astuce('💡 Astuce : pincez pour zoomer, glissez pour faire le tour du jardin. Les clés peuvent être n’importe où… même sous la famille !');
+  cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.joue = true; cles.trouvees = 0; cles.temps = DUREE_JEU; cles.en_cours = true; cles.fini = false; cles.indice = false; cles.debut = performance.now(); setTimeout(() => musiqueJeu(true), 450); dessiner(); astuce('💡 Astuce : pincez pour zoomer, glissez pour faire le tour du jardin. Les clés peuvent être n’importe où… même sous la famille !');
 }
 function message(txt) { let t = $('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
   t.textContent = txt; t.classList.remove('vu'); void t.offsetWidth; t.classList.add('vu'); }
@@ -815,6 +815,7 @@ function son(type) {
   try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) { return; }
   const t0 = audio.currentTime, bip = (f, t, d, forme = 'square', v = 0.12, f2) => { const o = audio.createOscillator(), g = audio.createGain(); o.type = forme; o.frequency.setValueAtTime(f, t0 + t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + t + d);
     g.gain.setValueAtTime(v * 2.2, t0 + t); g.gain.exponentialRampToValueAtTime(0.001, t0 + t + d); o.connect(g); g.connect(audio.destination); o.start(t0 + t); o.stop(t0 + t + d + 0.05); };
+  if (type === 'bipDepart') bip(440, 0, 0.12, 'triangle', 0.2);
   if (type === 'decompte') { for (let i = 0; i < 5; i++) bip(440, i, 0.12, 'triangle', 0.2); } // départ de course : bips courts, le « GO » plus aigu suit
   if (type === 'go') { bip(880, 0, 0.45, 'triangle', 0.23); }
   if (type === 'cle') { bip(988, 0, 0.08, 'square', 0.12); bip(1319, 0.08, 0.25, 'square', 0.12); }
@@ -842,8 +843,8 @@ function musiqueJeu(on) {
   boucle();
 }
 function decompte() {
-  const d = document.createElement('div'); d.className = 'decompte'; document.body.appendChild(d); son('decompte');
-  let n = 5; const pas = () => { if (!d.isConnected) return; d.innerHTML = `<span>${n > 0 ? n : 'GO !'}</span>`;
+  const d = document.createElement('div'); d.className = 'decompte'; document.body.appendChild(d);
+  let n = 5; const pas = () => { if (!d.isConnected) return; d.innerHTML = `<span>${n > 0 ? n : 'GO !'}</span>`; son(n > 0 ? 'bipDepart' : 'go');
     if (n > 0) { n--; setTimeout(pas, 1000); } else setTimeout(() => { if (!d.isConnected) return; d.remove(); lancerChasse(); }, 650); };
   pas();
 }
