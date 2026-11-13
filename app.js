@@ -359,7 +359,7 @@ function poserJardin() {
 // bureau : le mobilier d'origine du modèle de l'étage (nœuds « bureau__… ») et une bibliothèque ; bébé et sport : à venir
 const PIECES = {
   bureau: { garder: /^bureau__/, poser: [{ f: 'bibliotheque', long: 1.45, ech: [1, 1, 0.45], x: 7.33, y: 2.9, z: 0.95, r: -Math.PI / 2 }] },   // Metal frame bookcase (boglarka4)
-  bebe: { garder: null, murs: '#b4d4ef', poser: [                                                        // murs bleu layette
+  bebe: { garder: null, poser: [
     { f: 'bebe_lit', long: 1.25, x: 6.25, y: 2.9, z: 2.24, r: 0, etage: true },                         // Baby Bed (bkarc), contre le mur du fond
     { f: 'bebe_armoire', haut: 1.75, x: 6.9, y: 2.9, z: 0.32, r: 0, etage: true },             // baby boy closet (pinabinicartoons)
     { f: 'bebe_chaise', haut: 0.95, x: 4.95, y: 2.9, z: 0.55, r: 0.5, etage: true },                     // Baby's Highchair (Anastengp)
@@ -472,9 +472,9 @@ function avancerMusique() {
 }
 // toucher un invité : il applaudit ou lève les bras, puis reprend la danse
 async function feter(v) {
-  if (v.occupe || !v.fini) return; v.occupe = true; const e = ENFANT(v.avatar), c = await clipFete(SEXE(v.avatar) + (Math.random() < 0.5 ? '_claphands_01' : '_cheer_01'), e);
+  if (v.occupe || !v.dansant) return; v.occupe = true; const e = ENFANT(v.avatar), c = await clipFete(SEXE(v.avatar) + (Math.random() < 0.5 ? '_claphands_01' : '_cheer_01'), e);
   const a = v.mx.clipAction(c); a.reset().setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.play(); v.mx.clipAction(v.danse).crossFadeTo(a, 0.25, false);
-  setTimeout(() => { const d = v.mx.clipAction(v.danse); d.reset().play(); a.crossFadeTo(d, 0.4, false); v.occupe = false; }, Math.min(3500, c.duration * 1000));
+  setTimeout(() => { a.crossFadeTo(danser(v.mx, v.danse), 0.4, false); v.occupe = false; }, Math.min(3500, c.duration * 1000));
 }
 canvas.addEventListener('pointerup', (ev) => {
   if (ecran !== 'fete' || !fete.invites.length) return;
@@ -485,6 +485,10 @@ canvas.addEventListener('pointerup', (ev) => {
 function monterLeSon() { fete.volume = fete.volume > 1 ? 1 : 1.45; for (const v of fete.invites) v.mx.timeScale = fete.volume; for (const m of fete.mixers) m.timeScale = fete.volume;
   for (const it of instances.values()) if (it.mixer) it.mixer.timeScale = fete.volume; if (fete.pluie) fete.pluie.visible = true; }
 // emplacements de danse : en cercles autour du centre de la piste
+// tout le monde danse la même chorégraphie, calée sur le premier danseur
+function danser(mx, clip) { const a = mx.clipAction(clip); a.reset(); if (fete.ref) a.time = fete.ref.time % clip.duration; a.play(); if (!fete.ref) fete.ref = a; return a; }
+const SUR_PISTE = (p) => p.x > 0.3 && p.x < 2.8 && p.z > 2.95 && p.z < 5.45;
+const INVITES_MAX = 8;
 function placeDanse(i) { const cx = 1.55, cz = 4.2; if (i === 0) return [cx, cz]; const anneau = i <= 6 ? 0.75 : 1.35, n = i <= 6 ? 6 : 12, k = i <= 6 ? i - 1 : i - 7, a = (k / n) * Math.PI * 2 + (anneau > 1 ? 0.26 : 0);
   return [cx + Math.cos(a) * anneau, cz + Math.sin(a) * anneau * 0.95]; }
 const CHEMIN = [[11.5, -0.3, 3.45], [8.3, -0.3, 3.45], [7.3, 0, 3.45], [4.6, 0, 2.85], [3.1, 0, 2.95]];
@@ -504,15 +508,18 @@ async function lancerFete() {
   // la famille du joueur danse déjà au centre
   let n = 0;
   for (const m of etat.membres) { const it = instances.get(m.id); if (!it) continue; const [x, z] = placeDanse(n++); it.obj.visible = true; it.obj.position.set(x, 0, z); it.obj.lookAt(1.55, 0, 4.2);
-    if (it.mixer && !ANIMAUX[m.avatar]) { const c = await clipFete(DANSES[SEXE(m.avatar)][n % 3], ENFANT(m.avatar)); it.mixer.stopAllAction(); it.mixer.clipAction(c).play(); } }
+    if (it.mixer && !ANIMAUX[m.avatar]) { const c = await clipFete(DANSES[SEXE(m.avatar)][0], ENFANT(m.avatar)); it.mixer.stopAllAction(); danser(it.mixer, c); } }
   // les invités : tous les autres personnages, qui entrent l'un après l'autre
   const deja = new Set(etat.membres.map((m) => baseAvatar(m.avatar)));
-  const tous = [...CATALOGUE.adulte, ...CATALOGUE.senior, ...CATALOGUE.enfant].filter((a, i, l) => l.indexOf(a) === i && !deja.has(a));
+  // 8 invités au plus, panachés : femmes, hommes, seniors et enfants à tour de rôle
+  const libres = (L) => (L || []).filter((a) => !deja.has(a));
+  const files = [libres(CATALOGUE.adulte).filter((a) => SEXE(a) === 'f'), libres(CATALOGUE.adulte).filter((a) => SEXE(a) === 'm'), libres(CATALOGUE.senior), libres(CATALOGUE.enfant)];
+  const tous = []; for (let k = 0; tous.length < INVITES_MAX && files.some((f) => f.length); k++) { const f = files[k % files.length]; if (f.length) tous.push(f.shift()); }
   // chargés l'un après l'autre (le téléphone décode une seule personne à la fois), version légère, compilés avant d'entrer
   const t0 = fete.t, tour = fete.tour = (fete.tour || 0) + 1, encore = () => fete.faite && fete.tour === tour;
   for (const [i, a] of tous.entries()) { if (!encore()) return;
     const g = await charger('../avatars/leger/' + a); const o = SkeletonUtils.clone(g.scene); o.traverse((x) => { if (x.isMesh) { x.castShadow = false; x.frustumCulled = false; } });
-    const mx = new THREE.AnimationMixer(o), marche = await clipFete(SEXE(a) + '_walk_neutral_01', ENFANT(a)), danse = await clipFete(DANSES[SEXE(a)][i % 3], ENFANT(a));
+    const mx = new THREE.AnimationMixer(o), marche = await clipFete(SEXE(a) + '_walk_neutral_01', ENFANT(a)), danse = await clipFete(DANSES[SEXE(a)][0], ENFANT(a));
     const am = mx.clipAction(marche); am.play(); o.position.set(...CHEMIN[0]);
     try { await renderer.compileAsync(o, camera, scene); } catch (e) { /* compilation à la première image */ }
     if (!encore()) return; o.visible = false; fete.groupe.add(o);
@@ -527,12 +534,15 @@ function avancerFete(dt) {
   { const k = (fete.t * (fete.volume > 1 ? 2.4 : 0.8)) % 3, i = Math.floor(k), f = k - i; ciel.color.copy(DISCO[i]).lerp(DISCO[(i + 1) % 3], f); }
   for (const v of fete.invites) { v.mx.update(dt); if (fete.t < v.depart) continue; v.o.visible = true; if (v.fini) continue;
     const pts = CHEMIN.concat([[v.but[0], 0, v.but[1]]]); const cible = new THREE.Vector3(...pts[v.seg + 1]);
-    const d = cible.clone().sub(v.o.position); const pas = v.vitesse * dt;
-    if (d.length() <= pas) { v.o.position.copy(cible); v.seg++; if (v.seg >= pts.length - 1) { v.fini = true; v.o.lookAt(1.55, 0, 4.2); const ad = v.mx.clipAction(v.danse); ad.reset().play(); v.am.crossFadeTo(ad, 0.4, false); } }
-    else { v.o.position.addScaledVector(d.normalize(), pas); v.o.lookAt(v.o.position.x + d.x, v.o.position.y, v.o.position.z + d.z); } }
+    const d = cible.clone().sub(v.o.position);
+    // dès qu'il pose le pied sur la piste, l'invité se met à danser, puis rejoint sa place en douceur
+    if (!v.dansant && v.seg >= CHEMIN.length - 1 && SUR_PISTE(v.o.position)) { v.dansant = true; v.am.crossFadeTo(danser(v.mx, v.danse), 0.3, false); }
+    const pas = (v.dansant ? 0.45 : v.vitesse) * dt;
+    if (d.length() <= pas) { v.o.position.copy(cible); v.seg++; if (v.seg >= pts.length - 1) { v.fini = true; v.o.lookAt(1.55, 0, 4.2); if (!v.dansant) { v.dansant = true; v.am.crossFadeTo(danser(v.mx, v.danse), 0.3, false); } } }
+    else { v.o.position.addScaledVector(d.normalize(), pas); if (v.dansant) v.o.lookAt(1.55, 0, 4.2); else v.o.lookAt(v.o.position.x + d.x, v.o.position.y, v.o.position.z + d.z); } }
 }
 function arreterFete() {
-  if (!fete.faite) return; fete.faite = false; feteActive = false; fete.t = 0; arreterMusique(); if (fete.volume > 1) monterLeSon();
+  if (!fete.faite) return; fete.faite = false; feteActive = false; fete.t = 0; fete.ref = null; arreterMusique(); if (fete.volume > 1) monterLeSon();
   for (const v of fete.invites) fete.groupe.remove(v.o); fete.invites = [];
   if (fete.groupe) fete.groupe.visible = false; soleil.intensity = 3.1; scene.environmentIntensity = 0.6; ciel.color.set('#fff0e0');
   for (const it of instances.values()) it.obj.traverse((x) => { if (x.isMesh) x.castShadow = true; }); soleil.shadow.autoUpdate = true;
@@ -766,17 +776,17 @@ const ECRANS = {
   },
   fiche: {
     vue: 'exterieur', plan: 'fiche', etape: '✓',
-    intitule: 'Votre Clever’hom est prête !',
+    intitule: 'Sauvegarder mon résultat',
     contenu: () => {
       const lignes = [['Votre arbre', (ARBRES.find((x) => x.id === etat.arbre)?.nom || '—') + (etat.valeur ? ' · ' + libelle(VALEURS, etat.valeur).toLowerCase() : '')], ['La famille', composition()],
         ['Habitudes', [...new Set(etat.membres.flatMap((m) => m.habitudes))].map((h) => libelle(HABITUDES, h)).join(', ') || '—'],
         ['Le style', libelle(STYLES, etat.style)], ['La pièce de 9 m²', libelle(PIECE, etat.piece)], ['Chambres souhaitées', etat.chambres]];
       return `<details class="detail"><summary>Votre maison en résumé</summary><div>${lignes.map(([a, b]) => `<div class="ligne-recap"><span>${a}</span><b>${esc(b)}</b></div>`).join('')}</div></details>`
-        + (etat.envoye ? `<p class="message">C'est noté ! Dans cette version de démonstration, la fiche n'est pas encore transmise au conseiller.</p>` :
+        + (etat.envoye ? `<p class="message">Résultat sauvegardé ! Dans cette version de démonstration, il n'est pas encore transmis au conseiller.</p>` :
         `<div class="champs compact"><input id="prenom" aria-label="Prénom" placeholder="Prénom" autocomplete="given-name" value="${esc(etat.prenom || moi.prenom)}"><input id="contact" aria-label="Téléphone ou e-mail" placeholder="Téléphone ou e-mail" autocomplete="tel" value="${esc(etat.contact)}"></div>
         <label class="consentement"><input type="checkbox" id="accord" ${etat.accord ? 'checked' : ''}><span>J'accepte qu'un conseiller Clever'hom me recontacte.</span></label>`);
     },
-    suite: () => etat.envoye ? 'Recommencer' : 'Envoyer au conseiller', pret: () => etat.envoye || (etat.accord && etat.contact.trim().length >= 6),
+    suite: () => etat.envoye ? 'Recommencer' : 'Sauvegarder', pret: () => etat.envoye || (etat.accord && etat.contact.trim().length >= 6),
   },
 };
 
@@ -786,6 +796,7 @@ function aller(nom) {
   if (noel.fait && nom !== 'noel' && nom !== 'fiche') cacherNoel();
   if (fete.faite && nom !== 'fete' && nom !== 'fiche') arreterFete();
   if (nom === 'fiche' && noel.groupe) for (const p of noel.groupe.children) if (p.userData.facade) p.visible = true;
+  if (nom !== 'fete') arreterMusique(); // l'écran de fin doit capter l'attention : plus de musique
   ecran = nom; document.body.dataset.ecran = nom; synchroniserFamille();
   if (nom === 'noel') montrerBoule(); else if (noel.boule) noel.boule.visible = false;
   const e = ECRANS[nom];
@@ -877,6 +888,8 @@ async function demarrer() {
   const [inte, coupe, et, etage] = await Promise.all(['interieur', 'maison-coupe', 'maison-etage', 'etage'].map((n) => charger(n)));
   decor.interieur = inte.scene; decor.etage = etage.scene; coques.coupe = coupe.scene; coques.etage = et.scene;
   scene.add(inte.scene, etage.scene, coupe.scene, et.scene);
+  // cage d'escalier vue de l'étage : le modèle ne contient que les marches du haut, un fond sombre fait lire la descente
+  { const fond = new THREE.Mesh(new THREE.PlaneGeometry(1.95, 1.82), new THREE.MeshBasicMaterial({ color: '#2b2622' })); fond.rotation.x = -Math.PI / 2; fond.position.set(4.225, 1.95, 4.76); et.scene.add(fond); }
   appliquerStyle(etat.style || 'moderne'); poserDeco('commun').then(visibiliteDeco); amenagerPiece(etat.piece || 'bureau');
   montrer(vue, ECRANS[ecran]?.famille !== false);
   if (!arbres.pommier) chargerArbre('pommier');
