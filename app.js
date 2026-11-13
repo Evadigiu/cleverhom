@@ -354,16 +354,30 @@ function poserJardin() {
 // bureau : le mobilier d'origine du modèle de l'étage (nœuds « bureau__… ») et une bibliothèque ; bébé et sport : à venir
 const PIECES = {
   bureau: { garder: /^bureau__/, poser: [{ f: 'bibliotheque', long: 1.45, ech: [1, 1, 0.45], x: 7.33, y: 2.9, z: 0.95, r: -Math.PI / 2 }] },   // Metal frame bookcase (boglarka4)
-  bebe: { garder: null, poser: [] },
+  bebe: { garder: null, murs: '#b4d4ef', poser: [                                                        // murs bleu layette
+    { f: 'bebe_lit', long: 1.25, x: 6.25, y: 2.9, z: 2.24, r: 0, etage: true },                         // Baby Bed (bkarc), contre le mur du fond
+    { f: 'bebe_armoire', haut: 1.75, x: 7.3, y: 2.9, z: 0.7, r: -Math.PI / 2, etage: true },             // baby boy closet (pinabinicartoons)
+    { f: 'bebe_chaise', haut: 0.95, x: 4.95, y: 2.9, z: 0.55, r: 0.5, etage: true },                     // Baby's Highchair (Anastengp)
+    { f: 'bebe_pack', long: 0.7, x: 5.55, y: 2.9, z: 1.55, r: 1.2, etage: true },                       // Baby Pack (liebherr996litronic) : couches, peluches, cubes
+    { f: 'bebe_draisienne', long: 0.55, x: 6.1, y: 2.9, z: 0.95, r: 0.7, etage: true },                  // XJD Baby Balance Bike (1021.akshays)
+  ] },
   sport: { garder: null, poser: [] },
 };
 const piecePosee = {};
+const PIECE9 = { x0: 4.34, x1: 7.58, z0: 0.05, z1: 2.66, y0: 2.9, y1: Number(QS.get('mur') || 4.2) };
+function mursPiece(couleur) {
+  const g = new THREE.Group(), m = new THREE.MeshStandardMaterial({ color: couleur, roughness: 0.95, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 });
+  const { x0, x1, z0, z1, y0, y1 } = PIECE9, h = y1 - y0, e = 0.012;
+  for (const [w, x, z, r] of [[x1 - x0, (x0 + x1) / 2, z0 + e, 0], [x1 - x0, (x0 + x1) / 2, z1 - e, 0], [z1 - z0, x0 + e, (z0 + z1) / 2, Math.PI / 2], [z1 - z0, x1 - e, (z0 + z1) / 2, Math.PI / 2]]) {
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m); pl.position.set(x, y0 + h / 2, z); pl.rotation.y = r; pl.receiveShadow = true; g.add(pl); }
+  return g;
+}
 async function amenagerPiece(id) {
   const P = PIECES[id] || PIECES.bureau;
   if (decor.etage) decor.etage.traverse((m) => { if (m.isMesh && /^bureau__/.test(m.name)) m.visible = !!P.garder && P.garder.test(m.name); });
   for (const [k, g] of Object.entries(piecePosee)) g.visible = k === id && !!decor.etage?.visible;
-  if (piecePosee[id] || !P.poser.length) return;
-  const groupe = new THREE.Group(); piecePosee[id] = groupe; scene.add(groupe);
+  if (piecePosee[id] || (!P.poser.length && !P.murs)) return;
+  const groupe = new THREE.Group(); piecePosee[id] = groupe; scene.add(groupe); if (P.murs) groupe.add(mursPiece(P.murs));
   await Promise.all(P.poser.map(async (p) => { const g = await charger('deco/' + p.f); const o = g.scene;
     const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3()); o.scale.multiplyScalar(p.haut ? p.haut / t.y : p.long / Math.max(t.x, t.z)); if (p.ech) o.scale.multiply(new THREE.Vector3(...p.ech));
     const pivot = new THREE.Group(); pivot.add(o); o.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3());
