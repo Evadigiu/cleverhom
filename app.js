@@ -466,6 +466,9 @@ const ARBRES = [
   { id: 'noisetier', nom: 'Noisetier', le: 'le noisetier', couleur: '#a8743f', titre: 'Le noisetier · le calme', texte: "Un coin d'ombre où l'on vient souffler. À l'automne, les noisettes se ramassent sans se presser." },
 ];
 // chaque valeur oriente vers un arbre ; la petite phrase dit ce qu'elle veut dire, concrètement, dans une maison
+const ICONES = { transmettre: '🌱', retrouver: '🍽️', recevoir: '🥂', ressourcer: '🍃', moderne: '✨', chaleureux: '🌼', bebe: '👶', bureau: '💻', sport: '🏋️', noel: '🎄', fete: '🥂', teletravail: '💻', cuisine: '🍳', jardin: '🌿', jeux: '🧸', amis: '🥂', adulte: '🧑', enfant: '🧒', senior: '👵', animal: '🐾', personne: '👤' };
+// tuiles compactes : une icône et un mot (le détail est dans aria-label)
+const tuile = (id, mot, on, aide = mot, cls = '') => `<button type="button" class="tuile ${cls}" data-id="${id}" aria-pressed="${!!on}" aria-label="${esc(aide)}"><i aria-hidden="true">${ICONES[id] || '•'}</i>${mot ? `<span>${esc(mot)}</span>` : ''}</button>`;
 const VALEURS = [
   ['transmettre', 'Transmettre', 'pommier', 'Bâtir ce qui restera à vos enfants'],
   ['retrouver', 'Se retrouver', 'cerisier', 'Les repas, les rires, la famille réunie'],
@@ -475,7 +478,7 @@ const VALEURS = [
 let CATALOGUE = { adulte: [], senior: [], enfant: [], animal: ['chien', 'chat'] };
 // l'âge décide de la catégorie : il ne reste à choisir que personne ou animal
 const TYPES = [['personne', 'Personne'], ['animal', 'Animal']];
-const AJOUTS = [['adulte', '+ Adulte'], ['enfant', '+ Enfant'], ['senior', '+ Senior'], ['animal', '+ Animal']];
+const AJOUTS = [['adulte', '+ 🧑 Adulte'], ['enfant', '+ 🧒 Enfant'], ['senior', '+ 👵 Senior'], ['animal', '+ 🐾 Animal']];
 const NOM_TYPE = { adulte: 'Adulte', enfant: 'Enfant', senior: 'Senior', animal: 'Animal' };
 const categorieAge = (age) => { const a = parseInt(age, 10); return Number.isNaN(a) ? null : a < 18 ? 'enfant' : a >= 65 ? 'senior' : 'adulte'; };
 // visages proposés : un adulte peut prendre un visage plus âgé et inversement ; les enfants ont les leurs
@@ -530,20 +533,20 @@ function visagesHtml(m) {
 const ORDRE = ['accueil', 'arbre', 'famille', 'style', 'etage', 'aventures', 'fiche'];
 const ECRANS = {
   arbre: {
-    vue: 'exterieur', famille: false, plan: 'arbre', etape: 'Étape 1 sur 4 · Votre arbre', pastille: 'Pousse en Alsace',
+    vue: 'exterieur', famille: false, plan: 'arbre', etape: '1/4',
     // avant le choix : la terre est déjà retournée et une bulle montre où l'arbre sera planté
     get bulle() { return etat.arbre ? null : { p: [terre.position.x, 0.25, terre.position.z], t: 'Votre arbre ici' }; },
-    intitule: 'Qu’est-ce qui compte le plus pour vous ?',
+    intitule: 'Ce qui compte pour vous ?',
     // un seul panneau, en bas : les intentions ; l'arbre et sa description apparaissent une fois l'intention choisie
     contenu: () => { const a = ARBRES.find((x) => x.id === etat.arbre);
-      return `<div class="valeurs">${VALEURS.map(([id, l, , sous]) => `<button type="button" class="puce valeur" data-id="${id}" aria-pressed="${etat.valeur === id}"><b>${esc(l)}</b><span>${esc(sous)}</span></button>`).join('')}</div>`
-        + (a ? `<div class="encart"><p class="titre-panneau">${a.titre}</p><p class="sous">${a.texte}</p></div>` : ''); },
+      return `<div class="tuiles">${VALEURS.map(([id, l, , sous]) => tuile(id, { ressourcer: 'Souffler', retrouver: 'Se retrouver' }[id] || l, etat.valeur === id, l + ' : ' + sous)).join('')}</div>`
+        + (a ? `<details class="detail"><summary>${a.titre}</summary><p>${a.texte}</p></details>` : ''); },
     clic: (id) => { const v = VALEURS.find((x) => x[0] === id); if (!v) return; etat.valeur = id; choisirArbre(v[2]); },
     suite: () => etat.arbre ? 'Planter ' + ARBRES.find((x) => x.id === etat.arbre).le : 'Choisissez ce qui compte', pret: () => !!etat.arbre,
   },
   famille: {
-    vue: 'exterieur', plan: 'famille', etape: 'Étape 2 sur 4 · Votre famille',
-    intitule: () => `Votre ${ARBRES.find((x) => x.id === etat.arbre)?.nom.toLowerCase() || 'arbre'} est planté. Qui va vivre ici avec vous ?`,
+    vue: 'exterieur', plan: 'famille', etape: '2/4',
+    intitule: 'Qui vit avec vous ?',
     // une bulle au-dessus du personnage sélectionné, pour savoir qui est qui dans le jardin
     get bulle() { const m = membreActif(), it = instances.get(m.id); if (!it || !it.obj.visible) return null; const p = it.obj.position; return { p: [p.x, p.y + (it.h || 1.6) + 0.18, p.z], t: nomMembre(m) }; },
     puces: () => etat.membres.map((m) => ({ id: m.id, l: nomMembre(m), on: etat.membre === m.id, suppr: !m.moi }))
@@ -560,11 +563,11 @@ const ECRANS = {
     contenu: () => {
       const m = membreActif(); const animal = m.type === 'animal';
       return (m.moi && etat.prenomManquant && !moi.prenom.trim() ? `<p class="alerte">Indiquez votre prénom pour entrer dans la maison.</p>` : '')
-        + `<div class="champs"><div class="champ"><label for="prenom-m">${m.moi ? 'Votre prénom' : 'Prénom'}</label><input id="prenom-m" autocomplete="${m.moi ? 'given-name' : 'off'}" maxlength="20" placeholder="${animal ? 'Son nom' : m.moi ? 'Votre prénom' : 'Son prénom'}" value="${esc(m.prenom)}"></div>`
-        + (animal ? '' : `<div class="champ age"><label for="age-m">Âge</label><input id="age-m" type="number" inputmode="numeric" min="0" max="110" placeholder="ans" value="${esc(m.age)}"></div>`) + `</div>`
-        + (m.moi ? '' : `<div class="onglets">${TYPES.map(([t, l]) => `<button type="button" class="puce" data-type="${t}" aria-pressed="${t === 'animal' ? animal : !animal}">${l}</button>`).join('')}</div>`)
+        + `<div class="champs compact"><input id="prenom-m" aria-label="${m.moi ? 'Votre prénom' : 'Prénom'}" autocomplete="${m.moi ? 'given-name' : 'off'}" maxlength="20" placeholder="${animal ? 'Son nom' : m.moi ? 'Votre prénom' : 'Son prénom'}" value="${esc(m.prenom)}">`
+        + (animal ? '' : `<input id="age-m" class="age" aria-label="Âge" type="number" inputmode="numeric" min="0" max="110" placeholder="Âge" value="${esc(m.age)}">`)
+        + (m.moi ? '' : TYPES.map(([t, l]) => `<button type="button" class="puce icone" data-type="${t}" aria-label="${l}" aria-pressed="${t === 'animal' ? animal : !animal}">${ICONES[t]}</button>`).join('')) + `</div>`
         + `<div id="visages">${visagesHtml(m)}</div>`
-        + (animal ? '' : `<div class="habitudes"><p class="titre-habitudes">${m.moi ? 'Vos habitudes' : 'Ses habitudes'} à la maison <span class="sous">plusieurs choix</span></p><div class="puces-habitudes">${HABITUDES.filter(([id]) => m.type !== 'enfant' || HABITUDES_ENFANT.includes(id)).map(([id, l]) => `<button type="button" class="puce" data-id="${id}" aria-pressed="${m.habitudes.includes(id)}">${l}</button>`).join('')}</div></div>`);
+        + (animal ? '' : `<div class="defile puces-habitudes" aria-label="Habitudes à la maison">${HABITUDES.filter(([id]) => m.type !== 'enfant' || HABITUDES_ENFANT.includes(id)).map(([id, l]) => `<button type="button" class="puce" data-id="${id}" aria-pressed="${m.habitudes.includes(id)}">${ICONES[id] || '🏃'} ${l}</button>`).join('')}</div>`);
     },
     clic: (id, el) => {
       const m = membreActif();
@@ -579,48 +582,45 @@ const ECRANS = {
     suite: () => 'Entrer dans la maison', pret: () => true,
   },
   style: {
-    vue: 'coupe', plan: 'salon', etape: 'Étape 3 sur 4 · Votre intérieur',
-    intitule: 'À quoi ressemblera votre Clever’hom ?',
-    contenu: () => `<div class="grille">${STYLES.map(([id, l, sous]) => choix(id, l, sous, etat.style === id)).join('')}</div>`
-      + (etat.style ? '' : `<p class="sous">Touchez un style : toute la maison s’habille en direct.</p>`),
+    vue: 'coupe', plan: 'salon', etape: '3/4',
+    intitule: 'Votre style ?',
+    contenu: () => `<div class="tuiles">${STYLES.map(([id, l, sous]) => tuile(id, l.split(' et ')[0], etat.style === id, l + ' : ' + sous)).join('')}</div>`,
     clic: (id) => { etat.style = id; appliquerStyle(id); },
     suite: () => etat.style ? 'Monter à l’étage' : 'Choisissez un style', pret: () => !!etat.style,
   },
   etage: {
-    vue: 'etage', plan: 'etage', etape: 'Étape 3 sur 4 · Qui dort où ?', bulle: { p: [5.96, 3.1, 1.35], t: '9 m² · à vous de choisir' },
-    intitule: () => `${prenoms()}… et une pièce de 9 m² à imaginer.`,
-    contenu: () => `<p class="titre-panneau">Cette pièce devient…</p><div class="grille trois">${PIECE.map(([id, l, s]) => choix(id, l, s, etat.piece === id)).join('')}</div>`
-      + `<div class="compteur"><p>Idéalement, combien de chambres vous faudrait-il ?</p><div><button type="button" data-id="moins" aria-label="Une chambre de moins">−</button><output>${etat.chambres}</output><button type="button" data-id="plus" aria-label="Une chambre de plus">+</button></div></div>`,
+    vue: 'etage', plan: 'etage', etape: '3/4', bulle: { p: [5.96, 3.1, 1.35], t: '9 m²' },
+    intitule: 'Cette pièce de 9 m² ?',
+    contenu: () => `<div class="tuiles">${PIECE.map(([id, l]) => tuile(id, { bebe: 'Bébé', bureau: 'Bureau', sport: 'Sport' }[id], etat.piece === id, l)).join('')}</div>`
+      + `<div class="compteur"><p>🛏️ Chambres idéales</p><div><button type="button" data-id="moins" aria-label="Une chambre de moins">−</button><output>${etat.chambres}</output><button type="button" data-id="plus" aria-label="Une chambre de plus">+</button></div></div>`,
     clic: (id) => { if (id === 'moins') etat.chambres = Math.max(1, etat.chambres - 1); else if (id === 'plus') etat.chambres = Math.min(6, etat.chambres + 1); else { etat.piece = id; zone9.visible = false; amenagerPiece(id); } },
     suite: () => etat.piece ? 'Choisir une aventure' : 'Choisissez l’usage de la pièce', pret: () => !!etat.piece,
   },
   aventures: {
-    vue: 'exterieur', plan: 'aventures', etape: 'Étape 4 sur 4 · Votre aventure',
-    intitule: 'La famille est installée. Place à la vie !',
-    contenu: () => AVENTURES.map(([id, t, s, tag, c]) => `<button type="button" class="choix aventure" data-id="${id}" aria-pressed="${etat.aventure === id}"><div><span class="tag" style="background:${c}">${tag}</span><b>${t}</b><span>${s}</span></div></button>`).join('')
-      + (etat.aventure && etat.aventure !== 'noel' ? `<p class="message">Cette aventure arrive dans la prochaine version. Votre choix est noté.</p>` : `<p class="sous">Environ 2 minutes par aventure.</p>`),
+    vue: 'exterieur', plan: 'aventures', etape: '4/4',
+    intitule: 'Votre aventure ?',
+    contenu: () => `<div class="tuiles grandes">${AVENTURES.map(([id, t]) => tuile(id, '', etat.aventure === id, t)).join('')}</div>`
+      + (etat.aventure && etat.aventure !== 'noel' ? `<p class="message">Bientôt disponible</p>` : ''),
     clic: (id) => { etat.aventure = id; if (id === 'noel') { chargerNoel(); montrerBoule(); } },
     suite: () => etat.aventure === 'noel' ? 'Commencer l’aventure' : 'Voir ma maison', pret: () => !!etat.aventure,
   },
   noel: {
-    vue: 'exterieur', plan: 'noel', etape: 'Aventure · La bombe de Noël',
-    intitule: () => !noel.fait ? 'Vous avez trouvé une boule de Noël ! Touchez-la pour décorer votre maison.' : noel.dedans ? 'Le réveillon est prêt !' : 'Joyeux Noël chez vous !',
-    contenu: () => !noel.fait ? `<p class="sous">La boule brille dans le jardin. Touchez-la, ou utilisez le bouton.</p>`
-      : noel.dedans ? `<p class="titre-panneau">Sapin, cadeaux et table de fête</p><p class="sous">Faites tourner la maison pour tout voir.</p>`
-      : `<p class="titre-panneau">Guirlandes, sapins enneigés et traîneau</p><p class="sous">La Clever’hom s’est habillée pour les fêtes. Entrez voir le salon !</p>`,
-    suite: () => !noel.fait ? 'Ouvrir la boule de Noël' : noel.dedans ? 'Voir ma maison' : 'Entrer dans la maison', pret: () => true,
+    vue: 'exterieur', plan: 'noel', etape: '🎄',
+    intitule: () => !noel.fait ? 'Touchez la boule de Noël !' : noel.dedans ? 'Le réveillon est prêt !' : 'Joyeux Noël !',
+    contenu: () => '',
+    suite: () => !noel.fait ? 'Ouvrir la boule' : noel.dedans ? 'Voir ma maison' : 'Entrer', pret: () => true,
   },
   fiche: {
-    vue: 'exterieur', plan: 'fiche', etape: 'Partie terminée', pastille: '4 sur 4',
-    intitule: 'Bravo ! Votre Clever’hom est prête.',
+    vue: 'exterieur', plan: 'fiche', etape: '✓',
+    intitule: 'Votre Clever’hom est prête !',
     contenu: () => {
       const lignes = [['Votre arbre', (ARBRES.find((x) => x.id === etat.arbre)?.nom || '—') + (etat.valeur ? ' · ' + libelle(VALEURS, etat.valeur).toLowerCase() : '')], ['La famille', composition()],
         ['Habitudes', [...new Set(etat.membres.flatMap((m) => m.habitudes))].map((h) => libelle(HABITUDES, h)).join(', ') || '—'],
         ['Le style', libelle(STYLES, etat.style)], ['La pièce de 9 m²', libelle(PIECE, etat.piece)], ['Chambres souhaitées', etat.chambres]];
-      return `<div>${lignes.map(([a, b]) => `<div class="ligne-recap"><span>${a}</span><b>${esc(b)}</b></div>`).join('')}</div>`
+      return `<details class="detail"><summary>Votre maison en résumé</summary><div>${lignes.map(([a, b]) => `<div class="ligne-recap"><span>${a}</span><b>${esc(b)}</b></div>`).join('')}</div></details>`
         + (etat.envoye ? `<p class="message">C'est noté ! Dans cette version de démonstration, la fiche n'est pas encore transmise au conseiller.</p>` :
-        `<div class="champs"><div class="champ"><label for="prenom">Prénom</label><input id="prenom" autocomplete="given-name" value="${esc(etat.prenom || moi.prenom)}"></div><div class="champ"><label for="contact">Téléphone ou e-mail</label><input id="contact" autocomplete="tel" value="${esc(etat.contact)}"></div></div>
-        <label class="consentement"><input type="checkbox" id="accord" ${etat.accord ? 'checked' : ''}><span>J'accepte qu'un conseiller Clever'hom me recontacte au sujet de ma future maison.</span></label>`);
+        `<div class="champs compact"><input id="prenom" aria-label="Prénom" placeholder="Prénom" autocomplete="given-name" value="${esc(etat.prenom || moi.prenom)}"><input id="contact" aria-label="Téléphone ou e-mail" placeholder="Téléphone ou e-mail" autocomplete="tel" value="${esc(etat.contact)}"></div>
+        <label class="consentement"><input type="checkbox" id="accord" ${etat.accord ? 'checked' : ''}><span>J'accepte qu'un conseiller Clever'hom me recontacte.</span></label>`);
     },
     suite: () => etat.envoye ? 'Recommencer' : 'Envoyer au conseiller', pret: () => etat.envoye || (etat.accord && etat.contact.trim().length >= 6),
   },
