@@ -1129,10 +1129,10 @@ const ECRANS = {
   },
   fin: {
     vue: 'exterieur', plan: 'accueil', etape: '🎁',
-    intitule: () => cles.reussi ? 'La maison est à vous ! 🏡' : 'Si près du but ! 😱',
+    intitule: () => cles.reussi ? 'Bravo ! 🏆' : 'Si près du but ! 😱',
     contenu: () => cles.reussi
-      ? `<div class="cadeau"><p class="etoiles">${cles.duree <= 15 ? '⭐⭐⭐' : cles.duree <= 30 ? '⭐⭐' : '⭐'}</p><b>3 clés en ${cles.duree} secondes ! ${cles.duree <= 15 ? 'Un vrai détective 🕵️' : cles.duree <= 30 ? 'Bien joué 👏' : 'Juste à temps 😅'}</b><span>🎁 Vous avez gagné ! Montrez cet écran à un conseiller Clever’hom pour récupérer votre cadeau… et visiter la maison en vrai.</span></div>`
-      : `<div class="cadeau"><p class="etoiles">${'🔑'.repeat(cles.trouvees)}${'▫️'.repeat(3 - cles.trouvees)}</p><b>${cles.trouvees} clé${cles.trouvees > 1 ? 's' : ''} sur 3… la revanche ?</b><span>Rejouez tout de suite, ou filez voir un conseiller Clever’hom : lui, il a toutes les clés et vous fait visiter la maison !</span></div>`,
+      ? `<div class="cadeau"><p class="etoiles">${cles.duree <= 15 ? '⭐⭐⭐' : cles.duree <= 30 ? '⭐⭐' : '⭐'}</p><b>3 clés en ${cles.duree} secondes : ${cles.duree <= 15 ? 'des yeux de lynx 🐱' : cles.duree <= 30 ? 'une dextérité de chamois 🐐' : 'une ténacité de bouledogue 🐶'} !</b><span>🎁 Un petit cadeau vous attend : montrez cet écran à un conseiller Clever’hom pour le récupérer.</span></div>`
+      : `<div class="cadeau"><p class="etoiles">${'🔑'.repeat(cles.trouvees)}${'▫️'.repeat(3 - cles.trouvees)}</p><b>${cles.trouvees} clé${cles.trouvees > 1 ? 's' : ''} sur 3… la revanche ?</b><span>Rejouez tout de suite, ou venez dire bonjour à un conseiller Clever’hom !</span></div>`,
     suite: () => cles.reussi ? 'Rejouer pour battre mon temps' : 'Je retente ma chance !', pret: () => true,
   },
   fete: {

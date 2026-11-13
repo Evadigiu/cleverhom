@@ -23,6 +23,9 @@
 <h1>🎵 Musiques du jeu</h1>
 <p class="intro">Touchez ▶ pour écouter chaque boucle (coupez le mode silencieux sur iPhone). Dites-moi le numéro que vous préférez.</p>
 <div id="liste"></div>
+<h1 style="margin-top:28px">⏱️ Sons du chrono</h1>
+<p class="intro">Le décompte de 5 secondes avant le départ, puis le tic des 10 dernières secondes.</p>
+<div id="chronos"></div>
 <p class="note">Toutes les mélodies sont originales et jouées directement par le navigateur, sans fichier à télécharger. Les bruitages du jeu passeront par-dessus.</p>
 <script>
 // chaque musique : tempo, motifs (notes MIDI, 0 = silence) et timbres
@@ -40,13 +43,13 @@ const M = [
 ];
 let ctx = null, jouee = null, minuterie = null;
 const hz = (n) => 440 * Math.pow(2, (n - 69) / 12);
-function stop() { if (minuterie) clearInterval(minuterie); minuterie = null; jouee = null; document.querySelectorAll('.piste').forEach((p) => { p.classList.remove('joue'); p.querySelector('button').textContent = '▶'; }); }
+function stop() { if (minuterie) clearInterval(minuterie); minuterie = null; jouee = null; document.querySelectorAll('#liste .piste').forEach((p) => { p.classList.remove('joue'); p.querySelector('button').textContent = '▶'; }); }
 function jouer(i) {
   if (jouee === i) { stop(); return; } stop();
   ctx ||= new (window.AudioContext || window.webkitAudioContext)(); ctx.resume();
   const m = M[i], croche = 60 / m.tempo / 2, g = ctx.createGain(); g.gain.value = 0.18; g.connect(ctx.destination);
   let pas = 0, prochain = ctx.currentTime + 0.05; jouee = i;
-  const el = document.querySelectorAll('.piste')[i]; el.classList.add('joue'); el.querySelector('button').textContent = '■';
+  const el = document.querySelectorAll('#liste .piste')[i]; el.classList.add('joue'); el.querySelector('button').textContent = '■';
   const note = (t, f, d, forme, v) => { const o = ctx.createOscillator(), e = ctx.createGain(); o.type = forme; o.frequency.value = f; e.gain.setValueAtTime(v, t); e.gain.exponentialRampToValueAtTime(0.001, t + d); o.connect(e); e.connect(g); o.start(t); o.stop(t + d + 0.02); };
   const bruit = (t, v) => { const n = ctx.sampleRate * 0.04, b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0); for (let k = 0; k < n; k++) d[k] = (Math.random() * 2 - 1) * (1 - k / n);
     const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), e = ctx.createGain(); s.buffer = b; f.type = 'highpass'; f.frequency.value = 7000; e.gain.value = v; s.connect(f); f.connect(e); e.connect(g); s.start(t); };
@@ -60,8 +63,22 @@ function jouer(i) {
       prochain += croche; pas++; }
   }, 60);
 }
+// sons de chrono candidats
+const C = [
+  { nom: 'A. Actuel', desc: 'Bips qui montent sur un grondement grave (intense)', f: (b) => { for (let i = 0; i < 5; i++) { b(330 + i * 40, i, 0.18, 'square', 0.3); b(82 + i * 10, i, 0.9, 'sawtooth', 0.11, 90 + i * 12); } b(784, 5, 0.35, 'square', 0.35); } },
+  { nom: 'B. Xylophone', desc: 'Cinq petites notes rondes qui montent, puis un accord joyeux', f: (b) => { [523, 587, 659, 698, 784].forEach((n, i) => { b(n, i, 0.5, 'sine', 0.5); b(n * 4, i, 0.06, 'sine', 0.12); }); [1047, 1319, 1568].forEach((n) => b(n, 5, 0.6, 'sine', 0.35)); } },
+  { nom: 'C. Départ de course', desc: 'Bips courts façon feux de départ, le dernier plus aigu', f: (b) => { for (let i = 0; i < 5; i++) b(440, i, 0.12, 'triangle', 0.45); b(880, 5, 0.45, 'triangle', 0.5); } },
+  { nom: 'D. Tic-tac de bois', desc: 'Tic-tac léger de pendule, puis un « ding »', f: (b) => { for (let i = 0; i < 5; i++) { b(1600, i, 0.03, 'sine', 0.5); b(1200, i + 0.5, 0.03, 'sine', 0.35); } b(1319, 5, 0.8, 'sine', 0.45); b(1976, 5, 0.6, 'sine', 0.2); } },
+  { nom: 'E. Tic des 10 dernières s : actuel', desc: 'Bip aigu sec chaque seconde', f: (b) => { for (let i = 0; i < 5; i++) b(1200, i, 0.05, 'square', 0.13); } },
+  { nom: 'F. Tic des 10 dernières s : doux', desc: 'Petit « tock » de bois chaque seconde', f: (b) => { for (let i = 0; i < 5; i++) b(900, i, 0.04, 'sine', 0.4); } },
+];
+function jouerChrono(i) { stop(); ctx ||= new (window.AudioContext || window.webkitAudioContext)(); ctx.resume(); const t0 = ctx.currentTime + 0.05;
+  C[i].f((f, t, d, forme, v, f2) => { const o = ctx.createOscillator(), e = ctx.createGain(); o.type = forme; o.frequency.setValueAtTime(f, t0 + t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + t + d);
+    e.gain.setValueAtTime(v, t0 + t); e.gain.exponentialRampToValueAtTime(0.001, t0 + t + d); o.connect(e); e.connect(ctx.destination); o.start(t0 + t); o.stop(t0 + t + d + 0.05); }); }
+document.getElementById('chronos').innerHTML = C.map((m, i) => `<div class="piste"><button type="button" aria-label="Écouter ${m.nom}">▶</button><div><b>${m.nom}</b><span>${m.desc}</span></div></div>`).join('');
+document.querySelectorAll('#chronos .piste button').forEach((b, i) => b.addEventListener('click', () => jouerChrono(i)));
 document.getElementById('liste').innerHTML = M.map((m, i) => `<div class="piste"><button type="button" aria-label="Écouter ${m.nom}">▶</button><div><b>${m.nom}</b><span>${m.desc}</span></div></div>`).join('');
-document.querySelectorAll('.piste button').forEach((b, i) => b.addEventListener('click', () => jouer(i)));
+document.querySelectorAll('#liste .piste button').forEach((b, i) => b.addEventListener('click', () => jouer(i)));
 </script>
 </body>
 </html>
