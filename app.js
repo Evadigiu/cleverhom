@@ -362,7 +362,7 @@ canvas.addEventListener('pointerup', (ev) => {
 // ---------- jardin : chaise longue sur la pelouse, jacinthe sur la terrasse (à la place du fauteuil suspendu) ----------
 const JARDIN = [
   { f: 'chaise_jardin', long: 1.95, p: [-7.2, -0.32, 0.1, -Math.PI / 2] },  // Garden Chair (Medhatelo) : dossier vers la maison, pieds vers le jardin
-  { f: 'jacinthe', haut: 0.55, p: [-2.25, 0.0, 3.85, 0] },                    // Hyacinth (scadl)
+  { f: 'jacinthe', haut: 0.55, p: [-2.25, 0.0, 4.75, 0] },                    // Hyacinth (scadl)
   { f: 'livres', haut: 0.22, p: [-7.3, -0.32, 0.85, 0.5] },                  // pile de livres (Book pile) au pied de la chaise longue, côté terrasse
   // mobilier de terrasse comme la maison témoin : table en bois et six chaises en résine anthracite ; salon tressé chez le voisin
   { f: 'table_jardin', long: 2.2, p: [-2.0, -0.12, 2.7, Math.PI / 2] },        // Wooden Dining Table Set (aziseptian_), chaises teintées
@@ -714,14 +714,14 @@ function arreterNaissance() {
 // objets ajoutés au jardin (Poly Haven CC0 et Sketchfab CC BY) ; ils restent en place pour tout le parcours
 const CACHETTES = [
   { id: 'pot', nom: 'le grand pot', haut: 1.05, p: [-3.4, -0.12, 0.4, 0.3] },                         // Potted Plant 01 (Poly Haven)
-  { id: 'bottes', nom: 'les bottes', haut: 0.37, p: [-0.62, -0.12, 0.42, -Math.PI / 2] },              // Rubber Boots (Poly Haven)
+  { id: 'bottes', nom: 'les bottes', haut: 0.37, p: [-0.62, -0.12, 0.85, -Math.PI / 2] },              // Rubber Boots (Poly Haven)
   { id: 'mangeoire', nom: 'la mangeoire', haut: 1.5, p: [-4.9, -0.32, -3.1, 0.4] },                    // SIMPLE bird feeder (sinnervoncrawsz), près des érables
   { id: 'rateau', nom: 'le râteau', haut: 1.5, debout: true, p: [-0.42, -0.32, -0.08, 0] },            // Gardener's Rake (incg5764), appuyé contre le bardage à gauche des bottes
-  { id: 'gnome', nom: 'le nain de jardin', haut: 0.55, p: [-1.0, -0.32, -0.25, -Math.PI / 2] },          // Mesh Garden Gnome (berriers), près des fleurs et de la chaise longue
+  { id: 'gnome', nom: 'le nain de jardin', haut: 0.55, p: [-1.55, -0.32, -0.5, -Math.PI / 2] },          // Mesh Garden Gnome (berriers), près des fleurs et de la chaise longue
   { id: 'foot', nom: 'le ballon', haut: 0.22, p: [-7.2, -0.32, 3.0, 0.6] },                            // Soccer Ball (vanart), au milieu de la pelouse
   { id: 'parasol', nom: 'le parasol', haut: 3.0, p: [-8.4, -0.32, -1.6, -Math.PI / 2] },           // Capri D400 (Fim-Umbrellas) : toile au-dessus de la chaise longue, pied côté érables
   { id: 'balancelle', nom: 'la balancelle', long: 2.1, p: [-8.0, -0.32, 6.15, Math.PI] },              // Swing Bench (johhny_3D), dos à la haie, face au jardin
-  { id: 'arrosoir', nom: "l'arrosoir", haut: 0.5, p: [-0.62, -0.32, -0.62, 0.9] },                    // Watering Can (taipl)
+  { id: 'arrosoir', nom: "l'arrosoir", haut: 0.5, p: [-0.8, -0.32, -1.1, 0.9] },                    // Watering Can (taipl)
 ];
 // érables alignés le long de la bordure gauche du jardin (Maple tree, atrodler)
 const ERABLES = [7.42, 5.54, 3.66, 1.78, -0.1, -1.98, -3.86, -5.74, -7.62, -9.5].map((x, i) => ({ id: 'erable' + (i + 1), nom: "l'érable", p: [x, -0.32, -4.3, i * 1.3] })); // dix érables, 2 m à gauche du jardin, de la clôture du fond jusqu'au bout de la maison côté rue
@@ -750,8 +750,10 @@ function lancerChasse() {
   for (const m of familleAffichee()) { const it = instances.get(m.id); if (it?.obj?.visible) { cles.objets.push({ id: 'fam_' + m.id, nom: NOMS_FAMILLE[m.avatar] || 'la famille', o: it.obj, famille: true }); zoneToucher(it.obj); } }
   for (const [f, nom] of Object.entries(DEJA_LA)) if (jardinPivots[f] && !cles.objets.some((o) => o.id === f)) cles.objets.push({ id: f, nom, o: jardinPivots[f] });
   for (const o of cles.objets) if (!/^erable/.test(o.id)) zoneToucher(o.o); // les arbres sont déjà assez grands
-  const dispo = cles.objets.filter((o) => o.o.parent && o.o.visible); const melange = dispo.map((o) => [Math.random(), o]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
-  cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.trouvees = 0; cles.temps = DUREE_JEU; cles.en_cours = true; cles.fini = false; cles.indice = false; cles.debut = performance.now(); son('go'); dessiner(); message('Touchez tout ce qui bouge… ou pas ! 👀');
+  // les clés ne se cachent que dans la partie du jardin bien visible : ni le long du côté de la maison (érables), ni derrière
+  const accessible = (o) => { const c = new THREE.Box3().setFromObject(o.o).getCenter(new THREE.Vector3()); return c.z > -1.3 && c.x < -0.2 && c.x > -9.2; };
+  const dispo = cles.objets.filter((o) => o.o.parent && o.o.visible && accessible(o)); const melange = dispo.map((o) => [Math.random(), o]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+  cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.trouvees = 0; cles.temps = DUREE_JEU; cles.en_cours = true; cles.fini = false; cles.indice = false; cles.debut = performance.now(); son('go'); setTimeout(() => musiqueJeu(true), 450); dessiner(); astuce('💡 Astuce : pincez pour zoomer, glissez pour faire le tour du jardin. Les clés peuvent être n’importe où… même sous la famille !');
 }
 function message(txt) { let t = $('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
   t.textContent = txt; t.classList.remove('vu'); void t.offsetWidth; t.classList.add('vu'); }
@@ -762,7 +764,7 @@ function fouiller(obj) {
     const b = new THREE.Box3().setFromObject(obj.o); const k = cles.cle.clone(); k.visible = true; k.position.set((b.min.x + b.max.x) / 2, Math.min(b.max.y, 1.6) + 0.15, (b.min.z + b.max.z) / 2); scene.add(k);
     cles.anims.push({ o: k, t: 0, y0: k.position.y, type: 'cle' });
     message(['Bien vu ! Une clé sous ' + obj.nom + ' 🔑', 'Et de deux ! Plus qu’une 🔥', 'La dernière ! Bravo 🎉'][cles.trouvees - 1]); son('cle'); bravo(['+1 🔑', '+1 🔑', 'BINGO !'][cles.trouvees - 1]); navigator.vibrate?.([40, 30, 80]);
-    if (cles.trouvees >= 3) { cles.en_cours = false; cles.fini = true; cles.reussi = true; cles.duree = Math.round((performance.now() - cles.debut) / 1000); setTimeout(() => { confettis(); son('victoire'); }, 500); setTimeout(() => { confettis(); aller('fin'); }, 2600); }
+    if (cles.trouvees >= 3) { musiqueJeu(false); cles.en_cours = false; cles.fini = true; cles.reussi = true; cles.duree = Math.round((performance.now() - cles.debut) / 1000); setTimeout(() => { confettis(); son('victoire'); }, 500); setTimeout(() => { confettis(); aller('fin'); }, 2600); }
     dessiner(); }
   else { const R = [`Pas sous ${obj.nom} !`, `Raté… ${obj.nom}, c’est trop facile 😏`, `Rien ici, cherchez ailleurs 👀`, `Pas de clé sous ${obj.nom} 🤫`, `Bien essayé ! Continuez 💪`]; message(R[Math.floor(Math.random() * R.length)]); son('rate'); navigator.vibrate?.(30);
     document.body.classList.remove('secoue'); void document.body.offsetWidth; document.body.classList.add('secoue'); }
@@ -779,15 +781,16 @@ function avancerCles(dt) {
   for (const a of cles.anims) { a.t += dt;
     if (a.type === 'secoue') a.o.rotation.y = a.r0 + Math.sin(a.t * 40) * 0.12 * Math.max(0, 1 - a.t / 0.45);
     if (a.type === 'cle') { a.o.position.y = a.y0 + Math.min(1, a.t / 0.8) * 0.7; a.o.rotation.y += dt * 6; a.o.scale.setScalar(1 + Math.min(1, a.t / 0.8) * 0.6); if (a.t > 1.6) a.o.removeFromParent(); }
-    if (a.type === 'indice') a.o.position.y = a.y0 + Math.abs(Math.sin(a.t * 5)) * 0.18; }
-  cles.anims = cles.anims.filter((a) => (a.type === 'secoue' ? a.t < 0.45 : a.type === 'cle' ? a.t <= 1.6 : !cles.fini));
+    if (a.type === 'indice') a.o.position.y = a.y0 + Math.abs(Math.sin(a.t * 5)) * 0.18;
+    if (a.type === 'repere') { a.o.rotation.y += dt * 3; a.o.position.y = a.y0 + Math.sin(a.t * 3) * 0.12; } }
+  cles.anims = cles.anims.filter((a) => (a.type === 'secoue' ? a.t < 0.45 : a.type === 'cle' ? a.t <= 1.6 : a.type === 'repere' ? true : !cles.fini));
   if (!cles.en_cours) return;
   const avant = Math.ceil(cles.temps); cles.temps = Math.max(0, cles.temps - dt);
   const b = $('barre-in'); if (b) { const r = cles.temps / DUREE_JEU; b.style.width = (r * 100) + '%'; b.classList.toggle('urgent', r < 0.25); }
-  if (Math.ceil(cles.temps) !== avant) { const c = $('chrono'); if (c) c.textContent = Math.ceil(cles.temps) + ' s'; if (cles.temps < 10 && cles.temps > 0) son('tic'); if (Math.ceil(cles.temps) === 20) message('⏰ Plus que 20 secondes ! Pensez à zoomer 🔍'); if (Math.ceil(cles.temps) === 10) bravo('10 s !'); }
+  if (Math.ceil(cles.temps) !== avant) { const c = $('chrono'); if (c) c.textContent = Math.ceil(cles.temps) + ' s'; if (cles.temps < 10 && cles.temps > 0) son('tic'); if (Math.ceil(cles.temps) === 25) indiceZone(); if (Math.ceil(cles.temps) === 15) message('⏰ Plus que 15 secondes ! Zoomez 🔍'); if (Math.ceil(cles.temps) === 10) bravo('10 s !'); }
   if (cles.temps <= 0) { // temps écoulé : personne ne repart bredouille, les cachettes restantes sautillent pour se montrer
-    cles.en_cours = false; cles.indice = true; cles.reussi = false; message('Temps écoulé ! Voici où étaient les clés…'); son('perdu');
-    for (const o of cles.objets) if (cles.avec.has(o.id)) cles.anims.push({ o: o.o, t: 0, y0: o.o.position.y, type: 'indice' }); dessiner(); setTimeout(() => { if (ecran === 'cles') aller('fin'); }, 3200); }
+    cles.en_cours = false; cles.indice = true; cles.reussi = false; musiqueJeu(false); message('Temps écoulé ! Voici où étaient les clés…'); son('perdu');
+    for (const o of cles.objets) if (cles.avec.has(o.id)) montrerCle(o); dessiner(); setTimeout(() => { if (ecran === 'cles') aller('fin'); }, 4500); }
 }
 // ---------- le jeu : décompte de 5 secondes, sons d'arcade (dessinés par le navigateur, sans fichier) ----------
 const DUREE_JEU = 45;
@@ -795,7 +798,7 @@ let audio = null;
 function son(type) {
   try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) { return; }
   const t0 = audio.currentTime, bip = (f, t, d, forme = 'square', v = 0.12, f2) => { const o = audio.createOscillator(), g = audio.createGain(); o.type = forme; o.frequency.setValueAtTime(f, t0 + t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + t + d);
-    g.gain.setValueAtTime(v, t0 + t); g.gain.exponentialRampToValueAtTime(0.001, t0 + t + d); o.connect(g); g.connect(audio.destination); o.start(t0 + t); o.stop(t0 + t + d + 0.05); };
+    g.gain.setValueAtTime(v * 2.2, t0 + t); g.gain.exponentialRampToValueAtTime(0.001, t0 + t + d); o.connect(g); g.connect(audio.destination); o.start(t0 + t); o.stop(t0 + t + d + 0.05); };
   if (type === 'decompte') { for (let i = 0; i < 5; i++) { bip(330 + i * 40, i, 0.18, 'square', 0.14); bip(82 + i * 10, i, 0.9, 'sawtooth', 0.05, 90 + i * 12); } } // battements qui montent : suspense
   if (type === 'go') { bip(523, 0, 0.12); bip(659, 0.1, 0.12); bip(784, 0.2, 0.35, 'square', 0.16); }
   if (type === 'cle') { bip(988, 0, 0.08, 'square', 0.12); bip(1319, 0.08, 0.25, 'square', 0.12); }
@@ -803,6 +806,24 @@ function son(type) {
   if (type === 'tic') bip(1200, 0, 0.05, 'square', 0.06);
   if (type === 'victoire') [523, 659, 784, 1047, 784, 1047].forEach((f, i) => bip(f, i * 0.12, i === 5 ? 0.6 : 0.14, 'square', 0.13));
   if (type === 'perdu') [392, 349, 311, 262].forEach((f, i) => bip(f, i * 0.22, 0.3, 'triangle', 0.15));
+}
+// musique de jeu : une petite boucle « chiptune » entraînante (mélodie originale), en fond pendant les 45 secondes
+const chip = { on: false, pas: 0, prochain: 0, gain: null };
+const MELODIE = [72, 76, 79, 76, 77, 81, 79, 0, 76, 79, 84, 79, 81, 77, 79, 0, 72, 74, 76, 79, 81, 79, 77, 76, 74, 76, 77, 74, 72, 0, 67, 0];
+const BASSE_JEU = [48, 48, 55, 55, 53, 53, 55, 55, 52, 52, 57, 57, 53, 53, 55, 55];
+const hz = (n) => 440 * Math.pow(2, (n - 69) / 12);
+function musiqueJeu(on) {
+  if (!audio) return; chip.on = on; if (!on) { chip.gain?.gain.setTargetAtTime(0, audio.currentTime, 0.1); return; }
+  chip.gain = audio.createGain(); chip.gain.gain.value = 0.06; chip.gain.connect(audio.destination); chip.pas = 0; chip.prochain = audio.currentTime + 0.05;
+  const g = chip.gain, boucle = () => { if (!chip.on || chip.gain !== g) return; const croche = 60 / 152 / 2;
+    while (chip.prochain < audio.currentTime + 0.25) { const t = chip.prochain, k = chip.pas, n = MELODIE[k % 32], b = BASSE_JEU[(k >> 1) % 16];
+      const note = (f, d, forme, v) => { const o = audio.createOscillator(), e = audio.createGain(); o.type = forme; o.frequency.value = f; e.gain.setValueAtTime(v, t); e.gain.exponentialRampToValueAtTime(0.001, t + d); o.connect(e); e.connect(g); o.start(t); o.stop(t + d + 0.02); };
+      if (n) note(hz(n), croche * 0.9, 'square', 0.9);
+      if (k % 2 === 0) note(hz(b), croche * 1.6, 'triangle', 1.6);
+      if (k % 4 === 2) note(2400, 0.03, 'square', 0.25);
+      chip.prochain += croche; chip.pas++; }
+    setTimeout(boucle, 80); };
+  boucle();
 }
 function decompte() {
   const d = document.createElement('div'); d.className = 'decompte'; document.body.appendChild(d); son('decompte');
@@ -825,7 +846,20 @@ function regles() {
   document.body.appendChild(d); d.querySelector('button').addEventListener('click', () => { son('tic'); d.remove(); setTimeout(decompte, 300); });
 }
 function lancerJeu(direct) { arreterChasse(); cles.fini = cles.indice = false; cles.reussi = false; cles.pret = false; aller('cles'); if (direct) setTimeout(decompte, 600); else setTimeout(regles, 500); }
-function arreterChasse() { cles.en_cours = false; for (const a of cles.anims) if (a.type === 'indice') a.o.position.y = a.y0; cles.anims = []; }
+// clé manquée : elle sort de sa cachette, en tournant, dans un faisceau de lumière
+let faisceauMat = null;
+function montrerCle(o) {
+  if (!faisceauMat) { const c = document.createElement('canvas'); c.width = 4; c.height = 128; const g = c.getContext('2d'); const d = g.createLinearGradient(0, 0, 0, 128); d.addColorStop(0, 'rgba(255,230,140,0)'); d.addColorStop(1, 'rgba(255,230,140,1)'); g.fillStyle = d; g.fillRect(0, 0, 4, 128);
+    faisceauMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, opacity: 0.8, toneMapped: false }); }
+  const b = new THREE.Box3().setFromObject(o.o), c = b.getCenter(new THREE.Vector3());
+  const f = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.55, 5, 24, 1, true), faisceauMat); f.position.set(c.x, b.min.y + 2.5, c.z); scene.add(f);
+  const k = cles.cle.clone(); k.visible = true; k.scale.multiplyScalar(1.8); k.position.set(c.x, Math.min(b.max.y, 1.6) + 0.35, c.z); scene.add(k);
+  cles.reperes = (cles.reperes || []).concat(f, k); cles.anims.push({ o: k, t: 0, y0: k.position.y, type: 'repere' });
+}
+function indiceZone() { const o = cles.objets.find((x) => cles.avec.has(x.id)); if (!o) return; const c = new THREE.Box3().setFromObject(o.o).getCenter(new THREE.Vector3());
+  const z = o.famille ? 'du côté de la famille 👨‍👩‍👧' : c.x > -3.8 ? 'près de la maison 🏡' : c.x < -6.5 ? 'au fond du jardin 🌳' : c.z > 3.5 ? 'côté haie 🌿' : 'au milieu du jardin 👀'; astuce('💡 Indice : une clé se cache ' + z); }
+function astuce(txt) { document.querySelector('.astuce-jeu')?.remove(); const d = document.createElement('div'); d.className = 'astuce-jeu'; d.textContent = txt; document.body.appendChild(d); setTimeout(() => d.classList.add('part'), 6000); setTimeout(() => d.remove(), 6600); }
+function arreterChasse() { musiqueJeu(false); document.querySelector('.astuce-jeu')?.remove(); for (const r of cles.reperes || []) r.removeFromParent(); cles.reperes = []; cles.en_cours = false; for (const a of cles.anims) if (a.type === 'indice') a.o.position.y = a.y0; cles.anims = []; }
 
 // ---------- pelouse : une herbe dense et vivante, dessinée une fois (brins, touffes, légères bandes de tonte) ----------
 let herbeTex = null;
