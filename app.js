@@ -346,8 +346,39 @@ const JARDIN = [
   { f: 'table_jardin', long: 2.2, p: [-2.0, -0.12, 2.7, Math.PI / 2] },        // Wooden Dining Table Set (aziseptian_), chaises teintées
   { f: 'salon_jardin', long: 2.7, p: [-1.85, -0.12, 11.4, -Math.PI / 2] },     // COMPLETE PATIO SET (shirlanne), sans la console
 ];
-// massif de fleurs (Garden Flower, ragukgr) au pied du mur de côté (là où était le garage), du coin jardin jusqu'à la rue
-for (let x = 0.15, i = 0; x < 7.5; x += 0.7, i++) JARDIN.push({ f: 'fleurs', long: 0.9 + (i % 3) * 0.08, p: [x, -0.32, -0.72, i * 1.7] });
+// massif planté au pied du mur de côté (là où était le garage) et de celui de la maison voisine :
+// arbustes verts et lupins au fond, épiaires roses en ponctuation, ixoras rouges devant, sur une bande de paillage.
+// Chaque espèce est dessinée en une seule fois pour toutes ses copies (instanciation), le massif reste léger.
+const MASSIF = { ixora: 0.5, vert: 0.68, lupin: 0.78, stachys: 0.62 }; // hauteurs en mètres
+const BANDES = [{ x0: -0.15, x1: 7.75, zMur: -0.3, sens: -1 }, { x0: -0.15, x1: 7.75, zMur: 2 * (5.67 + 0.15) + 0.3 + 2.6, sens: 1 }];
+function compositionMassif() {
+  let graine = 7; const alea = () => ((graine = (graine * 16807) % 2147483647) / 2147483647);
+  const P = [];
+  for (const b of BANDES) {
+    const z = (d) => b.zMur + b.sens * d;
+    // rang du fond (contre le mur) : arbustes verts et lupins en alternance, une épiaire de temps en temps
+    for (let x = b.x0 + 0.35, k = 0; x < b.x1 - 0.2; x += 0.62 + alea() * 0.12, k++) P.push({ e: k % 4 === 3 ? 'stachys' : k % 2 ? 'lupin' : 'vert', x: x + (alea() - 0.5) * 0.1, z: z(0.32 + alea() * 0.08) });
+    // rang de devant : ixoras rouges, quelques épiaires et petits arbustes verts
+    for (let x = b.x0 + 0.6, k = 0; x < b.x1 - 0.3; x += 0.7 + alea() * 0.15, k++) P.push({ e: k % 5 === 2 ? 'stachys' : k % 5 === 4 ? 'vert' : 'ixora', x: x + (alea() - 0.5) * 0.12, z: z(0.78 + alea() * 0.1), petit: true });
+  }
+  return P.map((p) => ({ ...p, r: alea() * Math.PI * 2, s: (p.petit && p.e === 'vert' ? 0.7 : 1) * (0.85 + alea() * 0.3) }));
+}
+async function poserMassif() {
+  // paillage brun foncé et bordure grise
+  const paillage = new THREE.MeshStandardMaterial({ color: '#4a3528', roughness: 1 }), bordure = new THREE.MeshStandardMaterial({ color: '#9a9690', roughness: 0.9 });
+  for (const b of BANDES) { const zA = b.zMur, zB = b.zMur + b.sens * 1.15, zc = (zA + zB) / 2, L = b.x1 - b.x0;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(L, 0.03, 1.15), paillage); m.position.set((b.x0 + b.x1) / 2, -0.315, zc); m.receiveShadow = true; scene.add(m);
+    const e = new THREE.Mesh(new THREE.BoxGeometry(L, 0.06, 0.06), bordure); e.position.set((b.x0 + b.x1) / 2, -0.3, zB); e.receiveShadow = true; scene.add(e); }
+  const P = compositionMassif();
+  await Promise.all(Object.keys(MASSIF).map(async (esp) => { const g = await charger('deco/massif_' + esp); const L = P.filter((p) => p.e === esp); if (!L.length) return;
+    const racine = g.scene; racine.updateMatrixWorld(true); const box = new THREE.Box3().setFromObject(racine, true), t = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+    const norm = new THREE.Matrix4().makeScale(MASSIF[esp] / t.y, MASSIF[esp] / t.y, MASSIF[esp] / t.y).multiply(new THREE.Matrix4().makeTranslation(-c.x, -box.min.y, -c.z));
+    const place = L.map((p) => new THREE.Matrix4().compose(new THREE.Vector3(p.x, -0.3, p.z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.r), new THREE.Vector3(p.s, p.s, p.s)));
+    racine.traverse((m) => { if (!m.isMesh) return; const mat = m.material.clone(); if (mat.transparent) { mat.transparent = false; mat.alphaTest = 0.4; mat.depthWrite = true; } mat.side = THREE.DoubleSide;
+      const im = new THREE.InstancedMesh(m.geometry, mat, L.length); const base = new THREE.Matrix4().multiplyMatrices(norm, m.matrixWorld);
+      place.forEach((pm, i) => im.setMatrixAt(i, new THREE.Matrix4().multiplyMatrices(pm, base))); im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere();
+      im.castShadow = true; im.receiveShadow = true; scene.add(im); }); }));
+}
 let livres = null; // cachés pendant Noël
 // le modèle du jardin : on retire l'ancien salon de jardin (chaises pliantes, parasol) et on fait courir la haie entre les deux maisons,
 // du volume en bois jusqu'à la clôture du fond (elle était à la limite de l'ancienne maison jumelle)
@@ -996,7 +1027,7 @@ async function demarrer() {
   const ATTENDU = 4.6e6; // maison, jardin et famille de départ
   for (const m of etat.membres.concat(VITRINE)) octets[m.avatar] = 0;
   const [ext, jardin] = await Promise.all(['maison-exterieur', 'jardin'].map((n) => charger(n, ATTENDU)));
-  coques.exterieur = ext.scene; scene.add(ext.scene, jardin.scene); amenagerJardin(jardin.scene); poserJardin();
+  coques.exterieur = ext.scene; scene.add(ext.scene, jardin.scene); amenagerJardin(jardin.scene); poserJardin(); poserMassif();
   vue = 'exterieur'; await synchroniserFamille();
   montrer('exterieur'); viser('accueil', true);
   mesures.pret = (performance.now() - DEBUT) / 1000; mesures.premier = total;
