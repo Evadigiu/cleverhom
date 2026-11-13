@@ -345,7 +345,7 @@ canvas.addEventListener('pointerup', (ev) => {
 
 // ---------- jardin : chaise longue sur la pelouse, jacinthe sur la terrasse (à la place du fauteuil suspendu) ----------
 const JARDIN = [
-  { f: 'chaise_longue', long: 1.75, p: [-3.05, -0.32, -1.3, Math.PI / 2] },   // Garden Lounge (scailman) : dossier vers la maison, pieds vers le jardin
+  { f: 'chaise_jardin', long: 1.95, p: [-3.05, -0.32, -1.3, -Math.PI / 2] },  // Garden Chair (Medhatelo) : dossier vers la maison, pieds vers le jardin
   { f: 'jacinthe', haut: 0.55, p: [-2.25, 0.0, 3.85, 0] },                    // Hyacinth (scadl)
   { f: 'livres', haut: 0.22, p: [-3.15, -0.32, -0.55, 0.5] },                  // pile de livres (Book pile) au pied de la chaise longue, côté terrasse
   // mobilier de terrasse comme la maison témoin : table en bois et six chaises en résine anthracite ; salon tressé chez le voisin
@@ -708,7 +708,7 @@ const CACHETTES = [
 ];
 // cinq érables alignés le long de la bordure gauche du jardin, de la maison jusqu'à la clôture du fond (Maple tree, atrodler)
 const ERABLES = [-2.0, -3.9, -5.8, -7.7, -9.5].map((x, i) => ({ id: 'erable' + (i + 1), nom: "l'érable", p: [x, -0.32, -2.3, i * 1.3] }));
-const DEJA_LA = { chaise_longue: 'la chaise longue', livres: 'la pile de livres', jacinthe: 'la jacinthe', table_jardin: 'la table' };
+const DEJA_LA = { chaise_jardin: 'la chaise longue', livres: 'la pile de livres', jacinthe: 'la jacinthe', table_jardin: 'la table' };
 const cles = { objets: [], cle: null, avec: new Set(), trouvees: 0, temps: 45, en_cours: false, fini: false, anims: [] };
 const g2 = (g) => g.scene.clone(true);
 async function poserCachettes() {

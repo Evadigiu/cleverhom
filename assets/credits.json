@@ -421,12 +421,6 @@
    "lien": "https://sketchfab.com/3d-models/2fed541b551b4c7a85d9aa712ac09786"
   },
   {
-   "nom": "Garden Lounge",
-   "auteur": "scailman",
-   "licence": "CC Attribution",
-   "lien": "https://sketchfab.com/3d-models/cd2c67402ea8426c90d0fcebb0fa60b4"
-  },
-  {
    "nom": "Hyacinth",
    "auteur": "scadl",
    "licence": "CC Attribution",
@@ -653,6 +647,12 @@
    "auteur": "johhny_3D",
    "licence": "CC Attribution",
    "lien": "https://sketchfab.com/3d-models/bc2f103605f44445a59cfe9c0d8b7d4e"
+  },
+  {
+   "nom": "Garden Chair",
+   "auteur": "Medhatelo",
+   "licence": "CC Attribution",
+   "lien": "https://sketchfab.com/3d-models/706fe87e98c341c79c6978b2cdc5d10d"
   }
  ],
  "polyhaven": [
