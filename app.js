@@ -701,10 +701,10 @@ const CACHETTES = [
   { id: 'bottes', nom: 'les bottes', haut: 0.37, p: [-0.62, -0.12, 0.42, -Math.PI / 2] },              // Rubber Boots (Poly Haven)
   { id: 'mangeoire', nom: 'la mangeoire', haut: 1.5, p: [-4.9, -0.32, -3.1, 0.4] },                    // SIMPLE bird feeder (sinnervoncrawsz), près des érables
   { id: 'rateau', nom: 'le râteau', haut: 1.5, debout: true, p: [-0.42, -0.32, -0.08, 0] },            // Gardener's Rake (incg5764), appuyé contre le bardage à gauche des bottes
-  { id: 'gnome', nom: 'le nain de jardin', haut: 0.55, p: [-1.7, -0.32, -0.75, -Math.PI / 2] },          // Mesh Garden Gnome (berriers), près des fleurs et de la chaise longue
+  { id: 'gnome', nom: 'le nain de jardin', haut: 0.55, p: [-1.0, -0.32, -0.25, -Math.PI / 2] },          // Mesh Garden Gnome (berriers), près des fleurs et de la chaise longue
   { id: 'foot', nom: 'le ballon', haut: 0.22, p: [-7.2, -0.32, 3.0, 0.6] },                            // Soccer Ball (vanart), au milieu de la pelouse
   { id: 'balancelle', nom: 'la balancelle', long: 2.1, p: [-8.0, -0.32, 6.15, Math.PI] },              // Swing Bench (johhny_3D), dos à la haie, face au jardin
-  { id: 'arrosoir', nom: "l'arrosoir", haut: 0.5, p: [-1.15, -0.32, -1.75, 0.5] },                    // Watering Can (taipl)
+  { id: 'arrosoir', nom: "l'arrosoir", haut: 0.5, p: [-0.62, -0.32, -0.62, 0.9] },                    // Watering Can (taipl)
 ];
 // érables alignés le long de la bordure gauche du jardin (Maple tree, atrodler)
 const ERABLES = [7.42, 5.54, 3.66, 1.78, -0.1, -1.98, -3.86, -5.74, -7.62, -9.5].map((x, i) => ({ id: 'erable' + (i + 1), nom: "l'érable", p: [x, -0.32, -4.3, i * 1.3] })); // dix érables, 2 m à gauche du jardin, de la clôture du fond jusqu'au bout de la maison côté rue
