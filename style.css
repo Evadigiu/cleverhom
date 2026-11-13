@@ -268,3 +268,5 @@ body.secoue #scene { animation: secoue 0.3s; }
 .astuce-jeu { position: fixed; left: 0; right: 0; margin: 0 auto; top: 92px; z-index: 45; width: min(88vw, 380px); background: #fff; border: 3px solid var(--vert); border-radius: 18px; padding: 10px 14px; font: 700 14px/1.35 var(--police); box-shadow: 0 8px 22px rgba(0,0,0,0.2); animation: monteCarte 0.4s cubic-bezier(.2,1.4,.4,1) both; pointer-events: none; transition: opacity 0.5s; }
 .astuce-jeu::before { content: ''; position: absolute; top: -10px; left: 50%; margin-left: -9px; border: 9px solid transparent; border-top: 0; border-bottom-color: var(--vert); }
 .astuce-jeu.part { opacity: 0; }
+
+body[data-ecran="cles"] #retour, body[data-ecran="fin"] #retour { visibility: hidden; }

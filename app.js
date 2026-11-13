@@ -754,6 +754,7 @@ function zonesMassif() { if (cles.objets.some((o) => o.id.startsWith('massif')))
   [[1.2, 'le début du massif'], [3.8, 'le milieu du massif'], [6.4, 'le bout du massif']].forEach(([x, nom], i) => { const g = new THREE.Group(); g.position.set(x, -0.1, -0.85);
     const z = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.9, 1.2), ZONE_TOUCHER); g.add(z); g.userData.zone = z; scene.add(g); cles.objets.push({ id: 'massif' + (i + 1), nom, o: g }); }); }
 function lancerChasse() {
+  if (!cles.autorise) return; cles.autorise = false; // une partie = un essai décompté, quel que soit le chemin pour y arriver
   zonesMassif();
   cles.objets = cles.objets.filter((o) => !o.famille);
   for (const m of familleAffichee()) { const it = instances.get(m.id); if (it?.obj?.visible) { cles.objets.push({ id: 'fam_' + m.id, nom: NOMS_FAMILLE[m.avatar] || 'la famille', o: it.obj, famille: true }); zoneToucher(it.obj); } }
@@ -871,7 +872,7 @@ const ESSAIS_MAX = 2;
 const essais = () => { try { return +localStorage.getItem('essais_cles') || 0; } catch (e) { return 0; } };
 const compterEssai = () => { try { localStorage.setItem('essais_cles', essais() + 1); } catch (e) { /* stockage indisponible */ } };
 const encoreUnEssai = () => essais() < ESSAIS_MAX;
-function lancerJeu(direct) { if (!encoreUnEssai()) { aller('fin'); return; } compterEssai(); arreterChasse(); cles.fini = cles.indice = false; cles.reussi = false; cles.pret = false; aller('cles'); if (direct) setTimeout(decompte, 600); else setTimeout(regles, 500); }
+function lancerJeu(direct) { if (!encoreUnEssai()) { aller('fin'); return; } compterEssai(); cles.autorise = true; arreterChasse(); cles.fini = cles.indice = false; cles.reussi = false; cles.pret = false; aller('cles'); if (direct) setTimeout(decompte, 600); else setTimeout(regles, 500); }
 // clé manquée : elle sort de sa cachette, en tournant, dans un faisceau de lumière
 let faisceauMat = null;
 function montrerCle(o) {
@@ -1268,7 +1269,7 @@ $('suite').addEventListener('click', () => {
   if (ecran === 'noel') { if (!noel.fait) { ouvrirBoule(); return; } if (!noel.dedans) { vueNoel(true); dessiner(); return; } aller('fiche'); return; }
   aller(ORDRE[ORDRE.indexOf(ecran) + 1]);
 });
-$('retour').addEventListener('click', () => (ecran === 'cles' || ecran === 'fin') ? (arreterChasse(), document.querySelector('.decompte')?.remove(), aller('accueil')) : aller(ecran === 'noel' || ecran === 'fete' || ecran === 'naissance' ? 'aventures' : ecran === 'fiche' && noel.fait ? 'noel' : ORDRE[Math.max(0, ORDRE.indexOf(ecran) - 1)]));
+$('retour').addEventListener('click', () => (ecran === 'cles' || ecran === 'fin') ? (arreterChasse(), document.querySelector('.decompte')?.remove(), document.querySelector('.regles')?.remove(), aller('accueil')) : aller(ecran === 'noel' || ecran === 'fete' || ecran === 'naissance' ? 'aventures' : ecran === 'fiche' && noel.fait ? 'noel' : ORDRE[Math.max(0, ORDRE.indexOf(ecran) - 1)]));
 $('jouer').addEventListener('click', () => { son('tic'); lancerJeu(); });
 
 // ---------- démarrage ----------
