@@ -44,8 +44,13 @@ const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 200);
 const controls = new OrbitControls(camera, canvas);
 Object.assign(controls, { enableDamping: true, enablePan: false, minDistance: 5, maxDistance: 34, maxPolarAngle: 1.32, autoRotate: true, autoRotateSpeed: -0.6 });
 
-function taille() { const w = innerWidth, h = innerHeight; renderer.setPixelRatio(ratioRendu()); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
-addEventListener('resize', taille); taille();
+// l'image suit la taille réelle de la zone 3D (et non la hauteur de fenêtre annoncée par le navigateur : avec la barre d'adresse
+// flottante de Safari, les deux diffèrent et l'image se retrouvait étirée)
+const zone3D = () => ({ w: canvas.clientWidth || innerWidth, h: canvas.clientHeight || innerHeight });
+function taille() { const { w, h } = zone3D(); renderer.setPixelRatio(ratioRendu()); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', taille); visualViewport?.addEventListener('resize', taille); if (window.ResizeObserver) new ResizeObserver(taille).observe(canvas); taille();
+// position du doigt dans la zone 3D, en coordonnées -1..1
+function viserDoigt(ev) { const r = canvas.getBoundingClientRect(); souris.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1); rayon.setFromCamera(souris, camera); }
 
 // ---------- plans de caméra (position, cible, angle de champ) ----------
 const PLANS = {
@@ -334,7 +339,7 @@ function confettis() {
 const rayon = new THREE.Raycaster(), souris = new THREE.Vector2();
 canvas.addEventListener('pointerup', (ev) => {
   if (ecran !== 'noel' || noel.fait || !noel.boule) return;
-  souris.set((ev.clientX / innerWidth) * 2 - 1, -(ev.clientY / innerHeight) * 2 + 1); rayon.setFromCamera(souris, camera);
+  viserDoigt(ev);
   if (rayon.intersectObject(noel.boule, true).length) ouvrirBoule();
 });
 
@@ -522,7 +527,7 @@ async function feter(v) {
 }
 canvas.addEventListener('pointerup', (ev) => {
   if (ecran !== 'fete' || !fete.invites.length) return;
-  souris.set((ev.clientX / innerWidth) * 2 - 1, -(ev.clientY / innerHeight) * 2 + 1); rayon.setFromCamera(souris, camera);
+  viserDoigt(ev);
   const h = rayon.intersectObjects(fete.invites.map((v) => v.o), true)[0]; if (!h) return;
   const v = fete.invites.find((x) => { let o = h.object; while (o) { if (o === x.o) return true; o = o.parent; } return false; }); if (v) feter(v);
 });
@@ -746,7 +751,7 @@ let appui = null;
 canvas.addEventListener('pointerdown', (ev) => { appui = [ev.clientX, ev.clientY]; });
 canvas.addEventListener('pointerup', (ev) => {
   if (ecran !== 'cles' || !(cles.en_cours || (cles.indice && !cles.fini)) || !appui || Math.hypot(ev.clientX - appui[0], ev.clientY - appui[1]) > 10) return; // un glissé fait tourner la vue, ce n'est pas un toucher
-  souris.set((ev.clientX / innerWidth) * 2 - 1, -(ev.clientY / innerHeight) * 2 + 1); rayon.setFromCamera(souris, camera);
+  viserDoigt(ev);
   const h = rayon.intersectObjects(cles.objets.map((o) => o.o), true)[0]; if (!h) return;
   const obj = cles.objets.find((x) => { let o = h.object; while (o) { if (o === x.o) return true; o = o.parent; } return false; }); if (obj) fouiller(obj);
 });
@@ -1142,9 +1147,9 @@ function image(dt) {
   for (const mx of mixers) mx.update(dt);
   avancerTrajet(dt); avancerCroissance(dt); avancerNoel(dt); avancerFete(dt); avancerNaissance(dt); avancerCles(dt); controls.update(); renderer.render(scene, camera);
   const b = ECRANS[ecran]?.bulle; const bulle = $('bulle');
-  if (b && !trajet) { tmp.set(...b.p).project(camera); bulle.hidden = tmp.z > 1; bulle.textContent = b.t; bulle.style.left = ((tmp.x + 1) / 2) * innerWidth + 'px'; bulle.style.top = ((1 - tmp.y) / 2) * innerHeight + 'px';
+  if (b && !trajet) { tmp.set(...b.p).project(camera); bulle.hidden = tmp.z > 1; bulle.textContent = b.t; bulle.style.left = ((tmp.x + 1) / 2) * zone3D().w + 'px'; bulle.style.top = ((1 - tmp.y) / 2) * zone3D().h + 'px';
     // pas de bulle par-dessus le bandeau ou le panneau (petits écrans) : elle cacherait les boutons
-    const haut = $('question').getBoundingClientRect().bottom, bas = $('panneau').getBoundingClientRect().top, y = ((1 - tmp.y) / 2) * innerHeight;
+    const haut = $('question').getBoundingClientRect().bottom, bas = $('panneau').getBoundingClientRect().top, y = ((1 - tmp.y) / 2) * zone3D().h;
     if (y < haut + 36 || y > bas) bulle.hidden = true; }
   else bulle.hidden = true;
 }
