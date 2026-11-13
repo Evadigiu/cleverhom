@@ -751,7 +751,7 @@ function lancerChasse() {
   for (const [f, nom] of Object.entries(DEJA_LA)) if (jardinPivots[f] && !cles.objets.some((o) => o.id === f)) cles.objets.push({ id: f, nom, o: jardinPivots[f] });
   for (const o of cles.objets) if (!/^erable/.test(o.id)) zoneToucher(o.o); // les arbres sont déjà assez grands
   const dispo = cles.objets.filter((o) => o.o.parent && o.o.visible); const melange = dispo.map((o) => [Math.random(), o]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
-  cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.trouvees = 0; cles.temps = DUREE_JEU; cles.en_cours = true; cles.fini = false; cles.indice = false; cles.debut = performance.now(); son('go'); dessiner(); message('Touchez les objets du jardin et la famille !');
+  cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.trouvees = 0; cles.temps = DUREE_JEU; cles.en_cours = true; cles.fini = false; cles.indice = false; cles.debut = performance.now(); son('go'); dessiner(); message('Touchez tout ce qui bouge… ou pas ! 👀');
 }
 function message(txt) { let t = $('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
   t.textContent = txt; t.classList.remove('vu'); void t.offsetWidth; t.classList.add('vu'); }
@@ -761,10 +761,11 @@ function fouiller(obj) {
   if (cles.avec.has(obj.id)) { cles.avec.delete(obj.id); cles.trouvees++;
     const b = new THREE.Box3().setFromObject(obj.o); const k = cles.cle.clone(); k.visible = true; k.position.set((b.min.x + b.max.x) / 2, Math.min(b.max.y, 1.6) + 0.15, (b.min.z + b.max.z) / 2); scene.add(k);
     cles.anims.push({ o: k, t: 0, y0: k.position.y, type: 'cle' });
-    message(cles.trouvees < 3 ? `Une clé sous ${obj.nom} ! 🔑` : 'Les 3 clés ! 🎉'); son('cle');
+    message(['Bien vu ! Une clé sous ' + obj.nom + ' 🔑', 'Et de deux ! Plus qu’une 🔥', 'La dernière ! Bravo 🎉'][cles.trouvees - 1]); son('cle'); bravo(['+1 🔑', '+1 🔑', 'BINGO !'][cles.trouvees - 1]); navigator.vibrate?.([40, 30, 80]);
     if (cles.trouvees >= 3) { cles.en_cours = false; cles.fini = true; cles.reussi = true; cles.duree = Math.round((performance.now() - cles.debut) / 1000); setTimeout(() => { confettis(); son('victoire'); }, 500); setTimeout(() => { confettis(); aller('fin'); }, 2600); }
     dessiner(); }
-  else { message(`Rien sous ${obj.nom}…`); son('rate'); }
+  else { const R = [`Pas sous ${obj.nom} !`, `Raté… ${obj.nom}, c’est trop facile 😏`, `Rien ici, cherchez ailleurs 👀`, `Pas de clé sous ${obj.nom} 🤫`, `Bien essayé ! Continuez 💪`]; message(R[Math.floor(Math.random() * R.length)]); son('rate'); navigator.vibrate?.(30);
+    document.body.classList.remove('secoue'); void document.body.offsetWidth; document.body.classList.add('secoue'); }
 }
 let appui = null;
 canvas.addEventListener('pointerdown', (ev) => { appui = [ev.clientX, ev.clientY]; });
@@ -783,7 +784,7 @@ function avancerCles(dt) {
   if (!cles.en_cours) return;
   const avant = Math.ceil(cles.temps); cles.temps = Math.max(0, cles.temps - dt);
   const b = $('barre-in'); if (b) { const r = cles.temps / DUREE_JEU; b.style.width = (r * 100) + '%'; b.classList.toggle('urgent', r < 0.25); }
-  if (Math.ceil(cles.temps) !== avant) { const c = $('chrono'); if (c) c.textContent = Math.ceil(cles.temps) + ' s'; if (cles.temps < 10 && cles.temps > 0) son('tic'); }
+  if (Math.ceil(cles.temps) !== avant) { const c = $('chrono'); if (c) c.textContent = Math.ceil(cles.temps) + ' s'; if (cles.temps < 10 && cles.temps > 0) son('tic'); if (Math.ceil(cles.temps) === 20) message('⏰ Plus que 20 secondes ! Pensez à zoomer 🔍'); if (Math.ceil(cles.temps) === 10) bravo('10 s !'); }
   if (cles.temps <= 0) { // temps écoulé : personne ne repart bredouille, les cachettes restantes sautillent pour se montrer
     cles.en_cours = false; cles.indice = true; cles.reussi = false; message('Temps écoulé ! Voici où étaient les clés…'); son('perdu');
     for (const o of cles.objets) if (cles.avec.has(o.id)) cles.anims.push({ o: o.o, t: 0, y0: o.o.position.y, type: 'indice' }); dessiner(); setTimeout(() => { if (ecran === 'cles') aller('fin'); }, 3200); }
@@ -809,7 +810,21 @@ function decompte() {
     if (n > 0) { n--; setTimeout(pas, 1000); } else setTimeout(() => { if (!d.isConnected) return; d.remove(); lancerChasse(); }, 650); };
   pas();
 }
-function lancerJeu() { arreterChasse(); cles.fini = cles.indice = false; cles.reussi = false; cles.pret = false; aller('cles'); setTimeout(decompte, 700); }
+// gros message au centre de l'écran (« +1 🔑 », « BINGO ! »)
+function bravo(txt) { const d = document.createElement('div'); d.className = 'bravo'; d.textContent = txt; document.body.appendChild(d); setTimeout(() => d.remove(), 1200); }
+// la règle du jeu, expliquée avant de lancer le décompte
+function regles() {
+  const d = document.createElement('div'); d.className = 'regles';
+  d.innerHTML = `<div class="regles-carte"><p class="regles-titre">Comment jouer ?</p>
+    <ol><li><i>👆</i><span><b>Glissez</b> le doigt pour tourner autour de la maison</span></li>
+      <li><i>🤏</i><span><b>Pincez</b> avec deux doigts pour zoomer et fouiller les recoins</span></li>
+      <li><i>👉</i><span><b>Touchez</b> un objet… ou quelqu’un de la famille ! pour regarder dessous</span></li>
+      <li><i>⏱️</i><span>Trouvez les <b>3 clés</b> avant la fin du chrono : <b>45 secondes</b></span></li></ol>
+    <p class="regles-cadeau">🎁 Les 3 clés = un cadeau à récupérer auprès de nos conseillers</p>
+    <button type="button" class="jouer">C’est parti !</button></div>`;
+  document.body.appendChild(d); d.querySelector('button').addEventListener('click', () => { son('tic'); d.remove(); setTimeout(decompte, 300); });
+}
+function lancerJeu(direct) { arreterChasse(); cles.fini = cles.indice = false; cles.reussi = false; cles.pret = false; aller('cles'); if (direct) setTimeout(decompte, 600); else setTimeout(regles, 500); }
 function arreterChasse() { cles.en_cours = false; for (const a of cles.anims) if (a.type === 'indice') a.o.position.y = a.y0; cles.anims = []; }
 
 // ---------- pelouse : une herbe dense et vivante, dessinée une fois (brins, touffes, légères bandes de tonte) ----------
@@ -1061,18 +1076,18 @@ const ECRANS = {
   },
   cles: {
     vue: 'exterieur', plan: 'cles', etape: '🔑',
-    intitule: () => cles.fini ? 'Bravo !' : cles.indice ? 'Temps écoulé !' : cles.en_cours ? 'Trouvez les 3 clés !' : 'Prêt ?',
+    intitule: () => cles.fini ? 'Trop fort ! 🏆' : cles.indice ? 'Temps écoulé ! ⏰' : cles.en_cours ? 'Où sont les clés ? 🔍' : 'Prêt ?',
     contenu: () => `<div class="hud"><div class="trousseau">${[0, 1, 2].map((i) => `<i class="${i < cles.trouvees ? 'ok' : ''}">🔑</i>`).join('')}</div><b id="chrono">${Math.ceil(cles.temps)} s</b></div>
       <div class="barre"><div class="barre-in" id="barre-in" style="width:${(cles.temps / DUREE_JEU) * 100}%"></div></div>`,
     suite: () => cles.en_cours ? 'Touchez les objets et la famille !' : cles.fini ? 'Bravo !' : '…', pret: () => false,
   },
   fin: {
     vue: 'exterieur', plan: 'accueil', etape: '🎁',
-    intitule: () => cles.reussi ? 'La maison est à vous !' : 'Presque !',
+    intitule: () => cles.reussi ? 'La maison est à vous ! 🏡' : 'Si près du but ! 😱',
     contenu: () => cles.reussi
-      ? `<div class="cadeau"><b>🎉 Les 3 clés en ${cles.duree} secondes !</b><span>Vous avez gagné un cadeau. Montrez cet écran à un conseiller Clever’hom pour le recevoir… et découvrir la maison en vrai.</span></div>`
-      : `<div class="cadeau"><b>🔑 ${cles.trouvees} clé${cles.trouvees > 1 ? 's' : ''} sur 3</b><span>Retentez votre chance, ou venez voir un conseiller Clever’hom : il a toutes les clés de la maison et vous la fait visiter.</span></div>`,
-    suite: () => 'Rejouer', pret: () => true,
+      ? `<div class="cadeau"><p class="etoiles">${cles.duree <= 15 ? '⭐⭐⭐' : cles.duree <= 30 ? '⭐⭐' : '⭐'}</p><b>3 clés en ${cles.duree} secondes ! ${cles.duree <= 15 ? 'Un vrai détective 🕵️' : cles.duree <= 30 ? 'Bien joué 👏' : 'Juste à temps 😅'}</b><span>🎁 Vous avez gagné ! Montrez cet écran à un conseiller Clever’hom pour récupérer votre cadeau… et visiter la maison en vrai.</span></div>`
+      : `<div class="cadeau"><p class="etoiles">${'🔑'.repeat(cles.trouvees)}${'▫️'.repeat(3 - cles.trouvees)}</p><b>${cles.trouvees} clé${cles.trouvees > 1 ? 's' : ''} sur 3… la revanche ?</b><span>Rejouez tout de suite, ou filez voir un conseiller Clever’hom : lui, il a toutes les clés et vous fait visiter la maison !</span></div>`,
+    suite: () => cles.reussi ? 'Rejouer pour battre mon temps' : 'Je retente ma chance !', pret: () => true,
   },
   fete: {
     vue: 'coupe', plan: 'fete', etape: '🥂',
@@ -1179,7 +1194,7 @@ $('rituel-choisir').addEventListener('click', () => rituel(null));
 for (const r of ['rituel-intro', 'rituel-plaque']) $(r).addEventListener('click', (ev) => { if (!ev.target.closest('button')) $(r).classList.add('tout'); });
 $('rituel-famille').addEventListener('click', () => { if (croissance) { croissance.t = 1; avancerCroissance(0); } rituel(null); aller('famille'); });
 $('suite').addEventListener('click', () => {
-  if (ecran === 'fin') { lancerJeu(); return; }
+  if (ecran === 'fin') { lancerJeu(true); return; }
   if (ecran === 'fiche') { if (etat.envoye) { location.reload(); return; } etat.envoye = true; dessiner(); return; }
   if (ecran === 'arbre') { ceremonie(); return; }
   if (ecran === 'famille') { // le prénom du joueur est demandé ; on relit le champ (le remplissage automatique d'iOS ne prévient pas toujours)
