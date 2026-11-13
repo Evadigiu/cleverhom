@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Musiques du jeu</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { --vert: #c4d000; --texte: #1d1d1b; --fond: #fdece3; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fond); color: var(--texte); font: 15px/1.4 "Helvetica Neue", Helvetica, Arial, sans-serif; padding: 20px 16px 40px; }
+  h1 { font-size: 24px; margin: 0 0 6px; text-transform: uppercase; }
+  p.intro { margin: 0 0 18px; }
+  .piste { background: #fff; border-radius: 18px; padding: 14px 16px; margin-bottom: 12px; display: flex; gap: 14px; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+  .piste.joue { outline: 3px solid var(--vert); }
+  .piste button { flex: 0 0 56px; height: 56px; border-radius: 50%; border: 0; background: var(--vert); font-size: 22px; cursor: pointer; }
+  .piste b { display: block; font-size: 17px; }
+  .piste span { font-size: 13px; opacity: 0.75; }
+  .note { font-size: 13px; opacity: 0.7; margin-top: 18px; }
+</style>
+</head>
+<body>
+<h1>🎵 Musiques du jeu</h1>
+<p class="intro">Touchez ▶ pour écouter chaque boucle (coupez le mode silencieux sur iPhone). Dites-moi le numéro que vous préférez.</p>
+<div id="liste"></div>
+<p class="note">Toutes les mélodies sont originales et jouées directement par le navigateur, sans fichier à télécharger. Les bruitages du jeu passeront par-dessus.</p>
+<script>
+// chaque musique : tempo, motifs (notes MIDI, 0 = silence) et timbres
+const M = [
+  { nom: '1. Rétro joyeuse', desc: 'La musique actuelle : bondissante, façon jeu de plateforme', tempo: 152,
+    mel: [72,76,79,76,77,81,79,0,76,79,84,79,81,77,79,0,72,74,76,79,81,79,77,76,74,76,77,74,72,0,67,0], bas: [48,48,55,55,53,53,55,55,52,52,57,57,53,53,55,55], fm: 'square', fb: 'triangle', charl: true },
+  { nom: '2. Course contre la montre', desc: 'Rapide et tendue, idéale pour un chrono', tempo: 176,
+    mel: [69,0,72,69,76,0,74,72,71,0,74,71,79,0,76,74,69,72,76,81,79,76,74,72,71,74,77,76,74,71,68,0], bas: [45,45,45,45,43,43,43,43,41,41,41,41,40,40,44,44], fm: 'square', fb: 'sawtooth', charl: true, grosse: true },
+  { nom: '3. Funky jardin', desc: 'Basse groovy et petite mélodie sautillante', tempo: 118,
+    mel: [0,76,0,79,81,0,79,76,0,74,0,76,79,0,0,0,0,76,0,79,84,0,83,81,79,0,76,0,74,76,0,0], bas: [40,0,52,40,0,43,45,47,40,0,52,40,0,47,45,43], fm: 'square', fb: 'square', charl: true, grosse: true, staccato: true },
+  { nom: '4. Marimba ensoleillé', desc: 'Douce et souriante, ambiance été au jardin', tempo: 128,
+    mel: [79,76,72,76,79,84,79,76,77,74,71,74,77,81,79,0,76,72,67,72,76,79,76,72,74,77,79,77,74,71,72,0], bas: [48,0,55,0,53,0,55,0,48,0,57,0,53,0,55,0], fm: 'sine', fb: 'sine', marimba: true },
+  { nom: '5. Enquête mystère', desc: 'Pas de détective, un brin de suspense rigolo', tempo: 124,
+    mel: [64,0,67,0,68,0,67,64,0,0,62,0,64,0,0,0,64,0,67,0,71,0,70,67,0,0,68,0,67,0,0,0], bas: [40,0,40,47,40,0,40,47,41,0,41,48,41,0,41,48], fm: 'triangle', fb: 'triangle', charl: true, pizz: true },
+];
+let ctx = null, jouee = null, minuterie = null;
+const hz = (n) => 440 * Math.pow(2, (n - 69) / 12);
+function stop() { if (minuterie) clearInterval(minuterie); minuterie = null; jouee = null; document.querySelectorAll('.piste').forEach((p) => { p.classList.remove('joue'); p.querySelector('button').textContent = '▶'; }); }
+function jouer(i) {
+  if (jouee === i) { stop(); return; } stop();
+  ctx ||= new (window.AudioContext || window.webkitAudioContext)(); ctx.resume();
+  const m = M[i], croche = 60 / m.tempo / 2, g = ctx.createGain(); g.gain.value = 0.18; g.connect(ctx.destination);
+  let pas = 0, prochain = ctx.currentTime + 0.05; jouee = i;
+  const el = document.querySelectorAll('.piste')[i]; el.classList.add('joue'); el.querySelector('button').textContent = '■';
+  const note = (t, f, d, forme, v) => { const o = ctx.createOscillator(), e = ctx.createGain(); o.type = forme; o.frequency.value = f; e.gain.setValueAtTime(v, t); e.gain.exponentialRampToValueAtTime(0.001, t + d); o.connect(e); e.connect(g); o.start(t); o.stop(t + d + 0.02); };
+  const bruit = (t, v) => { const n = ctx.sampleRate * 0.04, b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0); for (let k = 0; k < n; k++) d[k] = (Math.random() * 2 - 1) * (1 - k / n);
+    const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), e = ctx.createGain(); s.buffer = b; f.type = 'highpass'; f.frequency.value = 7000; e.gain.value = v; s.connect(f); f.connect(e); e.connect(g); s.start(t); };
+  minuterie = setInterval(() => {
+    while (prochain < ctx.currentTime + 0.25) { const t = prochain, k = pas, n = m.mel[k % m.mel.length], b = m.bas[(k >> 1) % m.bas.length];
+      if (n) { if (m.marimba) { note(t, hz(n), croche * 1.8, 'sine', 0.55); note(t, hz(n) * 4, 0.08, 'sine', 0.12); } else note(t, hz(n), croche * (m.staccato ? 0.5 : m.pizz ? 0.6 : 0.9), m.fm, 0.32); }
+      if (k % 2 === 0 && b) note(t, hz(b), croche * (m.marimba ? 1.6 : 1.5), m.fb, m.fb === 'sawtooth' ? 0.22 : 0.5);
+      if (m.charl && k % 2 === 1) bruit(t, 0.18);
+      if (m.grosse && k % 4 === 0) note(t, 140, 0.15, 'sine', 0.9);
+      if (m.marimba && k % 4 === 2) bruit(t, 0.08);
+      prochain += croche; pas++; }
+  }, 60);
+}
+document.getElementById('liste').innerHTML = M.map((m, i) => `<div class="piste"><button type="button" aria-label="Écouter ${m.nom}">▶</button><div><b>${m.nom}</b><span>${m.desc}</span></div></div>`).join('');
+document.querySelectorAll('.piste button').forEach((b, i) => b.addEventListener('click', () => jouer(i)));
+</script>
+</body>
+</html>
