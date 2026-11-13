@@ -720,6 +720,10 @@ const CACHETTES = [
   { id: 'gnome', nom: 'le nain de jardin', haut: 0.55, p: [-1.55, -0.32, -0.5, -Math.PI / 2] },          // Mesh Garden Gnome (berriers), près des fleurs et de la chaise longue
   { id: 'foot', nom: 'le ballon', haut: 0.22, p: [-7.2, -0.32, 3.0, 0.6] },                            // Soccer Ball (vanart), au milieu de la pelouse
   { id: 'parasol', nom: 'le parasol', haut: 3.0, p: [-8.4, -0.32, -1.6, -Math.PI / 2] },           // Capri D400 (Fim-Umbrellas) : toile au-dessus de la chaise longue, pied côté érables
+  { id: 'niche', nom: 'la niche', haut: 0.85, p: [-5.2, -0.32, 6.35, Math.PI] },                       // Dog House (ovem), contre la haie
+  { id: 'terracotta', nom: 'le pot en terre cuite', haut: 0.32, p: [-2.9, -0.32, 6.3, 0] },            // Terracotta pot (sousinho)
+  { id: 'skate', nom: 'le skateboard', long: 0.8, p: [-6.3, -0.32, 1.7, 0.5] },                       // Skateboard (kama12)
+  { id: 'chat', nom: 'le chat', long: 0.5, p: [-4.0, -0.32, -0.55, 1.2] },                            // cat (toti.shroom)
   { id: 'balancelle', nom: 'la balancelle', long: 2.1, p: [-8.0, -0.32, 6.15, Math.PI] },              // Swing Bench (johhny_3D), dos à la haie, face au jardin
   { id: 'arrosoir', nom: "l'arrosoir", haut: 0.5, p: [-0.8, -0.32, -1.1, 0.9] },                    // Watering Can (taipl)
 ];
