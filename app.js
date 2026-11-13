@@ -26,6 +26,8 @@ renderer.shadowMap.enabled = true;
 renderer.localClippingEnabled = true; // les meubles ajoutés au rez-de-chaussée sont coupés à la hauteur des murs de la vue en coupe
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+// tous les objets du jardin, les arbres et les personnages sont réduits de 10 % (la maison garde sa taille) : la maison paraît plus spacieuse
+const ECHELLE = 0.9;
 const scene = new THREE.Scene();
 // ciel de fin de journée : bleu profond en haut, dégradé vers l'orangé à l'horizon, halo du côté du soleil couchant
 scene.background = new THREE.Color('#f4c99a');
@@ -150,7 +152,7 @@ async function synchroniserFamille() {
     let obj, mixer = null;
     if (ANIMAUX[m.avatar]) { obj = new THREE.Group(); const c = SkeletonUtils.clone(g.scene); obj.add(c); const bb = new THREE.Box3().setFromObject(c); c.scale.setScalar(ANIMAUX[m.avatar].h / (bb.max.y - bb.min.y)); c.updateMatrixWorld(true); const b2 = new THREE.Box3().setFromObject(c); const cc = b2.getCenter(new THREE.Vector3()); c.position.set(-cc.x, -b2.min.y, -cc.z); }
     else { obj = SkeletonUtils.clone(g.scene); if (g.animations[0]) { mixer = new THREE.AnimationMixer(obj); mixer.clipAction(g.animations[0]).play(); mixer.setTime(Math.random() * 3); } }
-    obj.traverse((x) => { if (x.isMesh) { x.castShadow = true; x.frustumCulled = false; } });
+    obj.scale.multiplyScalar(ECHELLE); obj.traverse((x) => { if (x.isMesh) { x.castShadow = true; x.frustumCulled = false; } });
     obj.updateMatrixWorld(true); const h = new THREE.Box3().setFromObject(obj).max.y;
     try { await renderer.compileAsync(obj, camera, scene); } catch (e) { /* ancien navigateur : compilation à la première image */ }
     if (!familleAffichee().some((x) => x.id === m.id && x.avatar === m.avatar)) return;
@@ -368,7 +370,7 @@ const JARDIN = [
 // massif planté au pied du mur de côté (là où était le garage) et de celui de la maison voisine :
 // un motif de trois espèces répété (boule de buis, ixora rouge, lupin à épis jaunes), plantées en quinconce
 // sur deux rangs, sur une bande de paillage. Chaque espèce est dessinée en une seule fois (instanciation).
-const MASSIF = { buis: 0.55, ixora: 0.5, lupin: 0.72 }; // hauteurs en mètres
+const MASSIF = { buis: 0.55 * ECHELLE, ixora: 0.5 * ECHELLE, lupin: 0.72 * ECHELLE }; // hauteurs en mètres
 const MOTIF = ['buis', 'ixora', 'lupin'];
 const BANDES = [{ x0: -0.15, x1: 7.75, zMur: -0.3, sens: -1 }, { x0: -0.15, x1: 7.75, zMur: 2 * (5.67 + 0.15) + 0.3 + 2.6, sens: 1 }];
 function compositionMassif() {
@@ -410,7 +412,7 @@ function amenagerJardin(j) {
 }
 function poserJardin() {
   const modeles = {}; for (const d of JARDIN) (modeles[d.f] ||= charger('deco/' + d.f)).then((g) => { const o = g.scene.clone(true); const t = new THREE.Box3().setFromObject(o, true).getSize(new THREE.Vector3());
-    o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
+    o.scale.multiplyScalar((d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)) * ECHELLE); o.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(o, true), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
     const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(d.p[0], d.p[1], d.p[2]); pivot.rotation.y = d.p[3]; if (d.f === 'livres') livres = pivot; jardinPivots[d.f] ||= pivot;
     o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true;
@@ -726,7 +728,7 @@ const DEJA_LA = { chaise_jardin: 'la chaise longue', livres: 'la pile de livres'
 const cles = { objets: [], cle: null, avec: new Set(), trouvees: 0, temps: 45, en_cours: false, fini: false, anims: [] };
 const g2 = (g) => g.scene.clone(true);
 async function poserCachettes() {
-  const poser = (o, d) => { o.updateMatrixWorld(true); const t = new THREE.Box3().setFromObject(o, true).getSize(new THREE.Vector3()); o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
+  const poser = (o, d) => { o.updateMatrixWorld(true); const t = new THREE.Box3().setFromObject(o, true).getSize(new THREE.Vector3()); o.scale.multiplyScalar((d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)) * ECHELLE); o.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(o, true), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z); const pv = new THREE.Group(); pv.add(o); return pv; };
   await Promise.all(CACHETTES.map(async (d) => { const g = await charger('cles/' + d.id); if (d.debout) { const r = new THREE.Group(); r.add(g.scene); g.scene.rotation.z = Math.PI / 2 - 0.12; g.scene = r; } const pv = poser(g.scene, d); pv.position.set(d.p[0], d.p[1], d.p[2]); pv.rotation.y = d.p[3];
     pv.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.4; m.material.depthWrite = true; } } });
@@ -864,12 +866,12 @@ function centrerTronc(racine, couronne = false) {
 function chargerArbre(id) {
   return (arbres[id] = charger('arbres/' + id).then((g) => { centrerTronc(g.scene, PAR_COURONNE.has(id));
     const pivot = new THREE.Group(); pivot.position.set(terre.position.x, terre.position.y, terre.position.z); g.scene.position.sub(pivot.position);
-    pivot.add(g.scene); scene.add(pivot); g.pivot = pivot; g.scene.visible = etat.arbre === id; arbres[id] = g; return g; }));
+    pivot.add(g.scene); pivot.scale.setScalar(ECHELLE); scene.add(pivot); g.pivot = pivot; g.scene.visible = etat.arbre === id; arbres[id] = g; return g; }));
 }
 let croissance = null; // { pivot, t } : l'arbre pousse pendant la plantation
 function avancerCroissance(dt) {
   if (!croissance) return; croissance.t = Math.min(1, croissance.t + dt / 2.0);
-  const k = 1 - Math.pow(1 - croissance.t, 3); croissance.pivot.scale.setScalar(0.04 + 0.96 * k);
+  const k = 1 - Math.pow(1 - croissance.t, 3); croissance.pivot.scale.setScalar((0.04 + 0.96 * k) * ECHELLE);
   if (croissance.t >= 1) croissance = null;
 }
 async function planter(id) {
