@@ -749,14 +749,18 @@ const ZONE_TOUCHER = new THREE.MeshBasicMaterial({ visible: false });
 function zoneToucher(o) { if (o.userData.zone) return; const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()), t = b.getSize(new THREE.Vector3());
   const r = Math.max(0.55, Math.max(t.x, t.y, t.z) * 0.6); const z = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), ZONE_TOUCHER); z.scale.set(Math.max(r, t.x * 0.6), Math.max(r, t.y * 0.6), Math.max(r, t.z * 0.6));
   z.position.copy(o.worldToLocal(c.clone())); z.scale.divide(o.getWorldScale(new THREE.Vector3())); o.add(z); o.userData.zone = z; }
+// le massif de fleurs le long du mur de côté : trois portions touchables (zones invisibles)
+function zonesMassif() { if (cles.objets.some((o) => o.id.startsWith('massif'))) return;
+  [[1.2, 'le début du massif'], [3.8, 'le milieu du massif'], [6.4, 'le bout du massif']].forEach(([x, nom], i) => { const g = new THREE.Group(); g.position.set(x, -0.1, -0.85);
+    const z = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.9, 1.2), ZONE_TOUCHER); g.add(z); g.userData.zone = z; scene.add(g); cles.objets.push({ id: 'massif' + (i + 1), nom, o: g }); }); }
 function lancerChasse() {
+  zonesMassif();
   cles.objets = cles.objets.filter((o) => !o.famille);
   for (const m of familleAffichee()) { const it = instances.get(m.id); if (it?.obj?.visible) { cles.objets.push({ id: 'fam_' + m.id, nom: NOMS_FAMILLE[m.avatar] || 'la famille', o: it.obj, famille: true }); zoneToucher(it.obj); } }
   for (const [f, nom] of Object.entries(DEJA_LA)) if (jardinPivots[f] && !cles.objets.some((o) => o.id === f)) cles.objets.push({ id: f, nom, o: jardinPivots[f] });
   for (const o of cles.objets) if (!/^erable/.test(o.id)) zoneToucher(o.o); // les arbres sont déjà assez grands
-  // les clés ne se cachent que dans la partie du jardin bien visible : ni le long du côté de la maison (érables), ni derrière
-  const accessible = (o) => { const c = new THREE.Box3().setFromObject(o.o).getCenter(new THREE.Vector3()); return c.z > -1.3 && c.x < -0.2 && c.x > -9.2; };
-  const dispo = cles.objets.filter((o) => o.o.parent && o.o.visible && accessible(o)); const melange = dispo.map((o) => [Math.random(), o]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+  // tout le jardin, y compris les érables et le massif le long de la maison
+  const dispo = cles.objets.filter((o) => o.o.parent && o.o.visible); const melange = dispo.map((o) => [Math.random(), o]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
   cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.joue = true; cles.trouvees = 0; cles.temps = DUREE_JEU; cles.en_cours = true; cles.fini = false; cles.indice = false; cles.debut = performance.now(); setTimeout(() => musiqueJeu(true), 450); dessiner(); astuce('💡 Astuce : pincez pour zoomer, glissez pour faire le tour du jardin. Les clés peuvent être n’importe où… même sous la famille !');
 }
 function message(txt) { let t = $('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
@@ -879,7 +883,7 @@ function montrerCle(o) {
   cles.reperes = (cles.reperes || []).concat(f, k); cles.anims.push({ o: k, t: 0, y0: k.position.y, type: 'repere' });
 }
 function indiceZone() { const o = cles.objets.find((x) => cles.avec.has(x.id)); if (!o) return; const c = new THREE.Box3().setFromObject(o.o).getCenter(new THREE.Vector3());
-  const z = o.famille ? 'du côté de la famille 👨‍👩‍👧' : c.x > -3.8 ? 'près de la maison 🏡' : c.x < -6.5 ? 'au fond du jardin 🌳' : c.z > 3.5 ? 'côté haie 🌿' : 'au milieu du jardin 👀'; astuce('💡 Indice : une clé se cache ' + z); }
+  const z = o.famille ? 'du côté de la famille 👨‍👩‍👧' : c.z < -1.6 ? 'derrière les arbres, le long de la maison 🌳' : c.z < -0.2 ? 'dans les fleurs, le long de la maison 🌸' : c.x > -3.8 ? 'près de la maison 🏡' : c.x < -6.5 ? 'au fond du jardin 🌳' : c.z > 3.5 ? 'côté haie 🌿' : 'au milieu du jardin 👀'; astuce('💡 Indice : une clé se cache ' + z); }
 function astuce(txt) { document.querySelector('.astuce-jeu')?.remove(); const d = document.createElement('div'); d.className = 'astuce-jeu'; d.textContent = txt; document.body.appendChild(d); setTimeout(() => d.classList.add('part'), 6000); setTimeout(() => d.remove(), 6600); }
 function arreterChasse() { musiqueJeu(false); document.querySelector('.astuce-jeu')?.remove(); for (const r of cles.reperes || []) r.removeFromParent(); cles.reperes = []; cles.en_cours = false; for (const a of cles.anims) if (a.type === 'indice') a.o.position.y = a.y0; cles.anims = []; }
 
