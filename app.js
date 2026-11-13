@@ -707,19 +707,20 @@ const CACHETTES = [
   { id: 'brouette', nom: 'la brouette', long: 1.35, p: [-5.7, -0.32, 6.45, 0.25] },                     // Wheelbarrow (Eleanie)
   { id: 'arrosoir', nom: "l'arrosoir", haut: 0.5, p: [-1.15, -0.32, -1.75, 0.5] },                    // Watering Can (taipl)
 ];
-const ARBRES_EN_PLUS = [{ id: 'lilas', nom: 'le lilas', p: [-9.0, -0.32, -0.9] }, { id: 'noisetier', nom: 'le noisetier', p: [-9.2, -0.32, 4.4] }];
+// cinq érables alignés le long de la bordure gauche du jardin, de la maison jusqu'à la clôture du fond (Maple tree, atrodler)
+const ERABLES = [-2.0, -3.9, -5.8, -7.7, -9.5].map((x, i) => ({ id: 'erable' + (i + 1), nom: "l'érable", p: [x, -0.32, -2.3, i * 1.3] }));
 const DEJA_LA = { chaise_longue: 'la chaise longue', livres: 'la pile de livres', jacinthe: 'la jacinthe', table_jardin: 'la table' };
 const cles = { objets: [], cle: null, avec: new Set(), trouvees: 0, temps: 45, en_cours: false, fini: false, anims: [] };
+const g2 = (g) => g.scene.clone(true);
 async function poserCachettes() {
   const poser = (o, d) => { const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3()); o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z); const pv = new THREE.Group(); pv.add(o); return pv; };
   await Promise.all(CACHETTES.map(async (d) => { const g = await charger('cles/' + d.id); const pv = poser(g.scene, d); pv.position.set(d.p[0], d.p[1], d.p[2]); pv.rotation.y = d.p[3];
     pv.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.4; m.material.depthWrite = true; } } });
     scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); }));
-  // deux arbres de plus au fond du jardin, pris parmi les arbres du rituel
-  await Promise.all(ARBRES_EN_PLUS.map(async (d) => { const g = await charger('arbres/' + d.id); const o = g.scene.clone(true); o.updateMatrixWorld(true);
-    const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.sub(new THREE.Vector3(c.x, b.min.y, c.z));
-    const pv = new THREE.Group(); pv.add(o); pv.position.set(d.p[0], d.p[1], d.p[2]); o.traverse((m) => { if (m.isMesh) m.castShadow = true; }); scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); }));
+  const ge = await charger('cles/erable');
+  for (const d of ERABLES) { const pv = poser(g2(ge), { haut: 4.3 }); pv.position.set(d.p[0], d.p[1], d.p[2]); pv.rotation.y = d.p[3];
+    pv.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); }
   const g = await charger('cles/cle'); cles.cle = poser(g.scene, { long: 0.32 }); cles.cle.visible = false;
   cles.cle.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.emissive = new THREE.Color('#ffcf4a'); m.material.emissiveIntensity = 0.35; } }); scene.add(cles.cle);
 }
@@ -730,7 +731,7 @@ function zoneToucher(o) { if (o.userData.zone) return; const b = new THREE.Box3(
   z.position.copy(o.worldToLocal(c.clone())); z.scale.divide(o.getWorldScale(new THREE.Vector3())); o.add(z); o.userData.zone = z; }
 function lancerChasse() {
   for (const [f, nom] of Object.entries(DEJA_LA)) if (jardinPivots[f] && !cles.objets.some((o) => o.id === f)) cles.objets.push({ id: f, nom, o: jardinPivots[f] });
-  for (const o of cles.objets) if (!/^(lilas|noisetier)$/.test(o.id)) zoneToucher(o.o); // les arbres sont déjà assez grands
+  for (const o of cles.objets) if (!/^erable/.test(o.id)) zoneToucher(o.o); // les arbres sont déjà assez grands
   const dispo = cles.objets.filter((o) => o.o.parent); const melange = dispo.map((o) => [Math.random(), o]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
   cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.trouvees = 0; cles.temps = 45; cles.en_cours = true; cles.fini = false; cles.indice = false; dessiner();
 }
