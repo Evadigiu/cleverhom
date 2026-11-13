@@ -563,23 +563,25 @@ async function chargerNaissance() {
   nais.groupe = new THREE.Group(); nais.groupe.visible = false; scene.add(nais.groupe);
   const poser = (o, taille, axe = 'y') => { o.updateMatrixWorld(true); o.traverse((x) => { if (x.isSkinnedMesh) x.skeleton.update(); }); const t = new THREE.Box3().setFromObject(o, true).getSize(new THREE.Vector3()); o.scale.multiplyScalar(taille / (axe === 'y' ? t.y : Math.max(t.x, t.z))); o.updateMatrixWorld(true); o.traverse((x) => { if (x.isSkinnedMesh) x.skeleton.update(); });
     const b = new THREE.Box3().setFromObject(o, true), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z); const p = new THREE.Group(); p.add(o); return p; };
-  nais.charge = Promise.all(['deco/bebe_lit', 'naissance/cigogne', 'naissance/nuage'].map((f) => charger(f))).then(([gl, gc, gn]) => {
+  nais.charge = Promise.all(['deco/bebe_lit', 'naissance/bebe', 'naissance/cigogne', 'naissance/nuage'].map((f) => charger(f))).then(([gl, gb, gc, gn]) => {
     // le lit à barreaux blanc de la chambre de l'étage
     const lit = poser(gl.scene.clone(true), 1.25, 'long'); lit.position.copy(BERCEAU); lit.visible = false; nais.groupe.add(lit); nais.lit = lit;
     lit.traverse((m) => { if (m.isMesh) { m.castShadow = false; m.frustumCulled = false; } });
-    // le bébé emmailloté : c'est le baluchon que la cigogne tient au bec ; au « pouf », il passe du bec au lit
-    let sac = null; { const mx0 = new THREE.AnimationMixer(gc.scene); for (const an of gc.animations) mx0.clipAction(an).play(); mx0.setTime(0); } gc.scene.updateMatrixWorld(true); gc.scene.traverse((m) => { if (m.isMesh && /pCube1/.test(m.name)) sac = m; });
-    if (sac) { const geo = sac.geometry.clone(); // sommets compressés (entiers bornés à ±1) : on les repasse en décimaux avant de les déplacer
-      for (const k of ['position', 'normal']) { const at = geo.getAttribute(k); if (!at) continue; const f = new Float32Array(at.count * 3); for (let i = 0; i < at.count; i++) { f[i * 3] = at.getX(i); f[i * 3 + 1] = at.getY(i); f[i * 3 + 2] = at.getZ(i); } geo.setAttribute(k, new THREE.BufferAttribute(f, 3)); }
-      geo.deleteAttribute('tangent'); geo.applyMatrix4(sac.matrixWorld); const mat = sac.material.clone(); mat.color = new THREE.Color('#f7e3a1'); // jaune pâle : se détache du matelas blanc
-      sac.material = mat; // le même baluchon, du bec au lit
-      const sacLit = new THREE.Mesh(geo, mat); // il pend au bec nœud en haut : on le pose tel quel
-      const g = new THREE.Group(); g.add(sacLit); const bebe = poser(g, 0.36, 'y'); // posé debout, tel que la cigogne l'a déposé lit.updateMatrixWorld(true);
-      const bl = new THREE.Box3().setFromObject(lit, true), sl = bl.getSize(new THREE.Vector3());
-      rayon.set(new THREE.Vector3(BERCEAU.x, bl.max.y + 1, BERCEAU.z), new THREE.Vector3(0, -1, 0)); const h = rayon.intersectObject(lit, true)[0];
-      bebe.position.set(BERCEAU.x, (h ? h.point.y : bl.min.y + sl.y * 0.45) + 0.005, BERCEAU.z); bebe.visible = false; nais.groupe.add(bebe); nais.bebe = bebe; nais.sac = sac; }
-    // la cigogne (regarde vers -z dans le modèle) et son battement d'ailes
-    const c = poser(gc.scene, 2.6, 'long'); // envergure de conte, pour qu'on la voie bien c.children[0].rotation.y = Math.PI; c.traverse((m) => { if (m.isMesh) { m.castShadow = false; m.frustumCulled = false; } });
+    // le bébé : livré debout bras en croix, on lui baisse les bras puis on le couche sur le dos dans le lit
+    const b = SkeletonUtils.clone(gb.scene); b.updateMatrixWorld(true);
+    b.traverse((x) => { if (x.isMesh) { x.castShadow = false; x.frustumCulled = false; x.material = x.material.clone(); x.material.transparent = false; x.material.alphaTest = 0.5; x.material.depthWrite = true; } if (!x.isBone || !/(L|R)_Upperarm_\d+$/.test(x.name)) return;
+      const p = x.getWorldPosition(new THREE.Vector3()); const d = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (p.x > 0 ? -1 : 1) * 1.22);
+      const pq = x.parent.getWorldQuaternion(new THREE.Quaternion()); x.quaternion.premultiply(pq.clone().invert().multiply(d).multiply(pq)); });
+    const couche = new THREE.Group(); couche.add(b); b.rotation.x = -Math.PI / 2; // tête vers -z, visage vers le ciel
+    const bebe = poser(couche, 0.52, 'long'); lit.updateMatrixWorld(true);
+    const bl = new THREE.Box3().setFromObject(lit, true), sl = bl.getSize(new THREE.Vector3());
+    if (sl.x > sl.z) bebe.rotation.y = Math.PI / 2; // le bébé dans le sens de la longueur du lit
+    // hauteur du matelas : un rayon lancé au centre du lit
+    rayon.set(new THREE.Vector3(BERCEAU.x, bl.max.y + 1, BERCEAU.z), new THREE.Vector3(0, -1, 0)); const h = rayon.intersectObject(lit, true)[0];
+    bebe.position.set(BERCEAU.x, (h ? h.point.y : bl.min.y + sl.y * 0.45) + 0.01, BERCEAU.z); bebe.visible = false; nais.groupe.add(bebe); nais.bebe = bebe;
+    let sac = null; gc.scene.traverse((m) => { if (m.isMesh && /pCube1/.test(m.name)) sac = m; }); nais.sac = sac; // le baluchon du bec disparaît au « pouf »
+    // la cigogne et son battement d'ailes (le bec regarde déjà vers +z, le sens de lookAt)
+    const c = poser(gc.scene, 2.6, 'long'); // envergure de conte, pour qu'on la voie bien  c.traverse((m) => { if (m.isMesh) { m.castShadow = false; m.frustumCulled = false; } });
     nais.groupe.add(c); nais.cigogne = c; nais.mixer = new THREE.AnimationMixer(c.children[0]); for (const a of gc.animations) nais.mixer.clipAction(a).play();
     // le nuage du « pouf »
     const n = poser(gn.scene, 1.6, 'y'); n.visible = false; n.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.material.depthWrite = false; m.material.emissive = new THREE.Color('#ffffff'); m.material.emissiveIntensity = 0.55; nais.nuageMats.push(m.material); m.frustumCulled = false; } });
