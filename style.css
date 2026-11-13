@@ -234,16 +234,3 @@ body[data-ecran="arbre"] .question .intitule { margin-bottom: 0; }
 .toast.vu { animation: toast 2.2s ease forwards; }
 @keyframes toast { 0% { opacity: 0; transform: translate(-50%, -6px); } 12% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; } 100% { opacity: 0; } }
 
-/* mode aménagement */
-body[data-amenagement] .carte, body[data-amenagement] .question, body[data-amenagement] .panneau { display: none !important; }
-.amen { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 50; max-width: 520px; margin: 0 auto; background: rgba(255,255,255,0.96); border-radius: 18px; padding: 12px 14px; box-shadow: 0 6px 24px rgba(0,0,0,0.15); font: 14px var(--police); color: var(--texte); display: flex; flex-direction: column; gap: 8px; }
-.amen-haut { display: flex; justify-content: space-between; align-items: baseline; }
-.amen-nb { font-size: 12px; opacity: 0.7; }
-.amen-nom { font-weight: 700; font-size: 15px; }
-.amen-boutons { display: flex; gap: 8px; }
-.amen-boutons button { flex: 1; min-height: 44px; border-radius: 12px; border: 1.5px solid #e2d8cf; background: #fff; font: 600 18px var(--police); color: var(--texte); cursor: pointer; }
-.amen-boutons button:disabled { opacity: 0.35; }
-.amen-boutons .amen-copier { background: var(--vert); border-color: var(--vert); font-size: 14px; }
-.amen-boutons [data-amen="tout"] { font-size: 14px; }
-.amen-aide { margin: 0; font-size: 11.5px; opacity: 0.7; line-height: 1.35; }
-.amen textarea { width: 100%; height: 70px; font: 11px monospace; }
