@@ -37,8 +37,8 @@ const cielDome = new THREE.Mesh(new THREE.SphereGeometry(160, 32, 16), new THREE
   vertexShader: 'varying vec3 vd; void main() { vd = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: `uniform vec3 soleilDir; varying vec3 vd;
     void main() { float h = clamp(vd.y, -0.1, 1.0);
-      vec3 haut = vec3(0.30, 0.50, 0.82), milieu = vec3(0.55, 0.70, 0.90), bas = vec3(1.0, 0.82, 0.58);
-      vec3 c = h < 0.06 ? mix(bas, milieu, smoothstep(-0.01, 0.06, h)) : mix(milieu, haut, smoothstep(0.06, 0.45, h));
+      vec3 haut = vec3(0.10, 0.20, 0.45), milieu = vec3(0.30, 0.45, 0.72), bas = vec3(0.98, 0.72, 0.50);
+      vec3 c = h < 0.035 ? mix(bas, milieu, smoothstep(-0.01, 0.035, h)) : mix(milieu, haut, smoothstep(0.035, 0.3, h));
       float s = max(dot(normalize(vd), soleilDir), 0.0); c += vec3(1.0, 0.55, 0.2) * (pow(s, 6.0) * 0.45 + pow(s, 60.0) * 0.6);
       gl_FragColor = vec4(c, 1.0); }` }));
 cielDome.renderOrder = -1; cielDome.frustumCulled = false; scene.add(cielDome);
