@@ -1,11 +1,11 @@
-@font-face { font-family: "Righteous"; src: url(assets/fonts/righteous.woff2) format("woff2"); font-display: swap; }
-@font-face { font-family: "Glacial Indifference"; src: url(assets/fonts/glacial-indifference-400.woff2) format("woff2"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Glacial Indifference"; src: url(assets/fonts/glacial-indifference-700.woff2) format("woff2"); font-weight: 700; font-display: swap; }
 
-:root { --fond: #fdece3; --texte: #1f1d1c; --corail: #f68f7c; --rose: #ee3f81; --sauge: #7bae8a; --sauge-fonce: #4e7a5c; --gris: #4a433e; }
+/* charte Maisons Clever'hom : vert anis, typographie Helvetica ; le fond rose pâle est celui du jeu */
+:root { --fond: #fdece3; --texte: #1f1d1c; --vert: #c4d000; --vert-fonce: #5f6600; --vert-pale: #f5f8d2; --gris: #4a433e;
+  --police: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --corail: var(--vert); --rose: var(--vert); --sauge: var(--vert); --sauge-fonce: var(--vert-fonce); }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: var(--fond); color: var(--texte); font-family: "Glacial Indifference", system-ui, sans-serif; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--fond); color: var(--texte); font-family: var(--police); }
 #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
 .haut { position: fixed; left: 0; right: 0; top: 0; padding: max(16px, env(safe-area-inset-top)) 20px 40px; pointer-events: none;
@@ -13,7 +13,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--fond);
 .logos { display: flex; align-items: center; gap: 10px; }
 .logos img { height: 48px; width: auto; }
 .logos span { color: #6b625c; }
-h1 { margin: 12px 0 8px; font-family: "Righteous", sans-serif; font-weight: 400; font-size: clamp(22px, 7vw, 30px); line-height: 1.08; text-transform: uppercase; letter-spacing: 0.04em; max-width: 360px; }
+h1 { margin: 12px 0 8px; font-family: var(--police); font-weight: 700; font-size: clamp(22px, 7vw, 30px); line-height: 1.08; text-transform: uppercase; letter-spacing: 0.04em; max-width: 360px; }
 .surligne { background: linear-gradient(180deg, transparent 58%, var(--rose) 58%); }
 .baseline { margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
 .point { width: 10px; height: 10px; border-radius: 5px; background: var(--rose); }
@@ -25,11 +25,11 @@ h1 { margin: 12px 0 8px; font-family: "Righteous", sans-serif; font-weight: 400;
 .carte { position: fixed; left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); max-width: 420px; margin: 0 auto; background: #fff; border-radius: 24px;
   padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(31, 29, 28, 0.14); }
 .ligne { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.etiquette { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--sauge-fonce); }
+.etiquette { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--sauge-fonce); }
 .nom { margin: 2px 0 0; font-weight: 700; font-size: 21px; }
-.vue { flex-shrink: 0; min-height: 44px; border: 1.5px solid var(--texte); background: #fff; color: var(--texte); border-radius: 999px; padding: 0 14px; font: 700 14px "Glacial Indifference", sans-serif; cursor: pointer; }
+.vue { flex-shrink: 0; min-height: 44px; border: 1.5px solid var(--texte); background: #fff; color: var(--texte); border-radius: 999px; padding: 0 14px; font: 700 14px var(--police); cursor: pointer; }
 .vue:disabled { opacity: 0.45; cursor: default; }
-.jouer { display: block; text-align: center; text-decoration: none; background: var(--corail); color: var(--texte); font-family: "Righteous", sans-serif; font-size: 22px; padding: 14px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; }
+.jouer { display: block; text-align: center; text-decoration: none; background: var(--corail); color: var(--texte); font-family: var(--police); font-weight: 700; font-size: 22px; padding: 14px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; }
 .mentions { margin: 0; text-align: center; font-size: 11px; color: var(--gris); }
 .mentions a { color: var(--gris); }
 
@@ -59,7 +59,7 @@ body:not([data-ecran="accueil"]) .seulement-accueil { display: none; }
 .intitule { margin: 0; font-weight: 700; font-size: 18px; line-height: 1.2; }
 .puces { display: flex; flex-wrap: wrap; gap: 6px; }
 .puces:empty { display: none; }
-.puce { min-height: 36px; border-radius: 999px; padding: 6px 13px; font: 700 14px "Glacial Indifference", sans-serif; border: 1.5px solid #e8ddd5; background: #fff; color: var(--texte); cursor: pointer; }
+.puce { min-height: 36px; border-radius: 999px; padding: 6px 13px; font: 700 14px var(--police); border: 1.5px solid #e8ddd5; background: #fff; color: var(--texte); cursor: pointer; }
 .puce[aria-pressed="true"] { background: var(--texte); color: #fff; border-color: var(--texte); }
 /* valeurs de l'étape arbre : quatre cartes avec une petite phrase */
 .puces:has(.valeur) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
@@ -76,23 +76,23 @@ body:not([data-ecran="accueil"]) .seulement-accueil { display: none; }
 #contenu { display: flex; flex-direction: column; gap: 12px; }
 .titre-panneau { margin: 0; font-weight: 700; font-size: 18px; }
 .sous { margin: 0; font-size: 14px; color: var(--gris); line-height: 1.35; }
-h2 { margin: 0; font-family: "Righteous", sans-serif; font-weight: 400; font-size: 21px; text-transform: uppercase; letter-spacing: 0.04em; }
+h2 { margin: 0; font-family: var(--police); font-weight: 700; font-size: 21px; text-transform: uppercase; letter-spacing: 0.04em; }
 .grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .grille.quatre { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .grille.trois { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .choix { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 11px; border-radius: 16px; text-align: left; color: var(--texte);
   border: 1.5px solid #efe6df; background: #fff; font: inherit; cursor: pointer; }
 .choix b { font-size: 15px; } .choix span { font-size: 12px; color: var(--gris); }
-.choix[aria-pressed="true"] { border-color: var(--corail); background: #fff4f0; }
+.choix[aria-pressed="true"] { border-color: var(--vert); background: var(--vert-pale); }
 .arbre { align-items: center; text-align: center; padding: 10px 4px; }
 .arbre i { width: 26px; height: 26px; border-radius: 13px; display: block; }
-.arbre[aria-pressed="true"] { border-color: var(--sauge); background: #e0f4e6; }
+.arbre[aria-pressed="true"] { border-color: var(--vert); background: var(--vert-pale); }
 .encart { background: var(--fond); border-radius: 16px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
 .compteur { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--fond); border-radius: 16px; padding: 8px 12px; }
 .compteur p { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.25; }
 .compteur div { display: flex; align-items: center; gap: 10px; }
 .compteur button { width: 36px; height: 36px; border-radius: 18px; border: 1.5px solid var(--texte); background: #fff; font-size: 18px; font-weight: 700; cursor: pointer; color: var(--texte); }
-.compteur output { font-family: "Righteous", sans-serif; font-size: 22px; width: 18px; text-align: center; }
+.compteur output { font-family: var(--police); font-weight: 700; font-size: 22px; width: 18px; text-align: center; }
 .membres { display: flex; gap: 8px; flex-wrap: wrap; }
 .aventure { flex-direction: row; align-items: center; gap: 12px; padding: 10px 12px; }
 .aventure .tag { align-self: flex-start; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 3px 8px; color: var(--texte); }
@@ -102,14 +102,14 @@ h2 { margin: 0; font-family: "Righteous", sans-serif; font-weight: 400; font-siz
 .champs { display: flex; gap: 8px; }
 .champ { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .champ label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--sauge-fonce); }
-.champ input { width: 100%; border: 1.5px solid #e8ddd5; border-radius: 12px; padding: 10px 11px; font: 16px "Glacial Indifference", sans-serif; color: var(--texte); }
+.champ input { width: 100%; border: 1.5px solid #e8ddd5; border-radius: 12px; padding: 10px 11px; font: 16px var(--police); color: var(--texte); }
 .consentement { display: flex; gap: 10px; align-items: flex-start; background: var(--fond); border-radius: 14px; padding: 10px 12px; font-size: 13px; line-height: 1.35; }
 .consentement input { width: 20px; height: 20px; margin: 0; flex-shrink: 0; accent-color: var(--texte); }
 .message { margin: 0; text-align: center; font-weight: 700; font-size: 15px; color: #2f5a3c; background: #e0f4e6; border-radius: 14px; padding: 12px; }
-.suite { display: block; width: 100%; border: none; background: var(--corail); color: var(--texte); font-family: "Righteous", sans-serif; font-size: 20px; padding: 14px; border-radius: 999px;
+.suite { display: block; width: 100%; border: none; background: var(--corail); color: var(--texte); font-family: var(--police); font-weight: 700; font-size: 20px; padding: 14px; border-radius: 999px;
   text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; }
 .suite:disabled { opacity: 0.45; cursor: default; }
-button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid var(--rose); outline-offset: 2px; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid var(--vert-fonce); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 /* ---------- famille ---------- */
@@ -124,7 +124,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .teint { width: 36px; height: 36px; border-radius: 18px; padding: 0; border: 3px solid #fff; box-shadow: 0 0 0 1.5px #e8ddd5; cursor: pointer; }
 .teint[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--corail); }
 .choix.animal { flex: 0 0 auto; min-width: 96px; align-items: center; }
-.retirer { align-self: flex-start; background: none; border: none; padding: 6px 0; font: 700 14px "Glacial Indifference", sans-serif; color: var(--gris); text-decoration: underline; cursor: pointer; }
+.retirer { align-self: flex-start; background: none; border: none; padding: 6px 0; font: 700 14px var(--police); color: var(--gris); text-decoration: underline; cursor: pointer; }
 .puce-membre { display: inline-flex; align-items: center; border-radius: 999px; }
 .puce-membre .puce { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; padding-right: 9px; }
 .corbeille { min-height: 36px; width: 36px; display: flex; align-items: center; justify-content: center; border: 1.5px solid #e8ddd5; border-left: none; border-radius: 0 999px 999px 0; background: #fff; color: #d9302c; cursor: pointer; padding: 0; }
@@ -137,7 +137,7 @@ body[data-rituel] .question, body[data-rituel] .panneau, body[data-rituel] .bull
   background: linear-gradient(180deg, rgba(253, 236, 227, 0) 0%, rgba(253, 236, 227, 0.55) 38%, rgba(253, 236, 227, 0.96) 62%); animation: voile 0.6s ease both; }
 .rituel.plaque { background: linear-gradient(180deg, rgba(253, 236, 227, 0) 0%, rgba(253, 236, 227, 0) 45%, rgba(253, 236, 227, 0.95) 72%); animation-delay: 1.5s; }
 .rituel-texte { width: 100%; max-width: 380px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.rituel h2 { margin: 4px 0 10px; font-family: "Righteous", sans-serif; font-weight: 400; font-size: clamp(26px, 8vw, 34px); line-height: 1.08; text-transform: uppercase; letter-spacing: 0.04em; }
+.rituel h2 { margin: 4px 0 10px; font-family: var(--police); font-weight: 700; font-size: clamp(26px, 8vw, 34px); line-height: 1.08; text-transform: uppercase; letter-spacing: 0.04em; }
 .rituel h2::after { content: ""; display: block; width: 44px; height: 3px; border-radius: 2px; background: var(--sauge); margin: 14px auto 0; }
 .rituel .vers { margin: 0; font-size: 19px; line-height: 1.35; opacity: 0; transform: translateY(6px); animation: vers 0.6s ease forwards; animation-delay: calc(0.4s + var(--i) * 0.35s); }
 .rituel .suite.vers { margin-top: 18px; }
@@ -151,7 +151,7 @@ body[data-rituel] .question, body[data-rituel] .panneau, body[data-rituel] .bull
 @media (prefers-reduced-motion: reduce) { .rituel, .rituel .vers, .rituel h2, .rituel .etiquette { animation-duration: 0.01s !important; animation-delay: 0s !important; } }
 
 /* étape famille : ajouts rapides et habitudes visibles */
-.puce.ajout { border-style: dashed; color: var(--sauge-fonce); border-color: #b9d3c0; background: #f4faf6; }
+.puce.ajout { border-style: dashed; color: var(--vert-fonce); border-color: #d6dd73; background: var(--vert-pale); }
 .habitudes { border-top: 1px solid #f3e7df; padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 .titre-habitudes { margin: 0; font-weight: 700; font-size: 15px; }
 .titre-habitudes .sous { font-weight: 400; font-size: 13px; color: var(--gris); margin-left: 4px; }

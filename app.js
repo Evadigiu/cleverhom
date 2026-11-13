@@ -142,7 +142,7 @@ function placerFamille() {
 }
 
 // zone de la pièce de 9 m², surlignée en corail à l'étage
-const zone9 = new THREE.Mesh(new THREE.PlaneGeometry(3.24, 2.61), new THREE.MeshBasicMaterial({ color: '#f68f7c', transparent: true, opacity: 0.4, depthWrite: false }));
+const zone9 = new THREE.Mesh(new THREE.PlaneGeometry(3.24, 2.61), new THREE.MeshBasicMaterial({ color: '#c4d000', transparent: true, opacity: 0.45, depthWrite: false }));
 zone9.rotation.x = -Math.PI / 2; zone9.position.set(5.96, 2.94, 1.355); zone9.visible = false; scene.add(zone9);
 
 // ---------- styles de décoration ----------
@@ -312,7 +312,7 @@ function confettis() {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const c = document.createElement('canvas'); c.className = 'confettis'; document.body.appendChild(c); const x = c.getContext('2d');
   const W = c.width = innerWidth * devicePixelRatio, H = c.height = innerHeight * devicePixelRatio;
-  const COUL = ['#ee3f81', '#f68f7c', '#7bae8a', '#f4c542', '#d6382f', '#ffffff', '#2f8f4e'];
+  const COUL = ['#c4d000', '#c4d000', '#e6ec7a', '#f4c542', '#d6382f', '#ffffff', '#2f8f4e'];
   const P = Array.from({ length: 180 }, () => ({ x: W / 2, y: H * 0.45, vx: (Math.random() - 0.5) * W * 0.035, vy: -Math.random() * H * 0.03 - H * 0.008, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4, w: (6 + Math.random() * 6) * devicePixelRatio, h: (3 + Math.random() * 4) * devicePixelRatio, c: COUL[(Math.random() * COUL.length) | 0] }));
   const t0 = performance.now();
   (function pas() { const t = (performance.now() - t0) / 1000; x.clearRect(0, 0, W, H);
@@ -436,9 +436,9 @@ const HABITUDES_CHIEN = [['balade', 'Balades', 'accès jardin'], ['dodo', 'Siest
 const STYLES = [['moderne', 'Moderne et épuré', 'Lignes nettes, tons clairs, peu d’objets'], ['chaleureux', 'Chaleureux et coloré', 'Couleurs vives, fleurs, mobilier accueillant']];
 const PIECE = [['bureau', 'Bureau', 'pour télétravailler'], ['amis', "Chambre d'amis", 'pour recevoir'], ['jeux', 'Salle de jeux', 'pour les enfants'], ['sport', 'Salle de sport', 'pour bouger'], ['bebe', 'Chambre de bébé', 'pour la suite']];
 const AVENTURES = [
-  ['noel', 'La bombe de Noël', 'Une boule éclate et toute la maison s’habille de lumières et de neige.', 'De saison', '#ee3f81'],
-  ['fete', 'La crémaillère', 'Guirlandes, platines et grande tablée : les voisins débarquent.', 'Avec les voisins', '#f68f7c'],
-  ['bebe', 'La famille s’agrandit', 'Une cigogne arrive : la pièce de 9 m² devient la chambre de bébé.', 'Une maison qui évolue', '#7bae8a'],
+  ['noel', 'La bombe de Noël', 'Une boule éclate et toute la maison s’habille de lumières et de neige.', 'De saison', '#c4d000'],
+  ['fete', 'La crémaillère', 'Guirlandes, platines et grande tablée : les voisins débarquent.', 'Avec les voisins', '#e6ec9a'],
+  ['bebe', 'La famille s’agrandit', 'Une cigogne arrive : la pièce de 9 m² devient la chambre de bébé.', 'Une maison qui évolue', '#f5f8d2'],
 ];
 const libelle = (liste, id) => (liste.find((x) => x[0] === id) || [, '—'])[1];
 
