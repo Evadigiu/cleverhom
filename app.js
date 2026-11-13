@@ -105,7 +105,7 @@ controls.addEventListener('start', () => { trajet = null; controls.autoRotate = 
 const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 const octets = {}; let total = 0;
 function charger(nom, attendu) {
-  return loader.loadAsync(M + nom + '.glb', (e) => { octets[nom] = e.loaded; if (attendu) { const fait = Object.values(octets).reduce((a, b) => a + b, 0); $('barre').style.width = Math.min(100, (100 * fait) / attendu) + '%'; } })
+  return loader.loadAsync(M + nom + '.glb', (e) => { octets[nom] = e.loaded; if (attendu) { const fait = Object.values(octets).reduce((a, b) => a + b, 0); void fait; } })
     .then((g) => { const ombre = !/^(interieur|etage|deco\/|noel\/)/.test(nom); g.scene.traverse((m) => { if (m.isMesh) { m.castShadow = ombre && !m.material.transparent; m.receiveShadow = true; } }); total += octets[nom] || 0; return g; });
 }
 const coques = {}; const decor = {}; const arbres = {};
@@ -811,8 +811,8 @@ function son(type) {
   try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) { return; }
   const t0 = audio.currentTime, bip = (f, t, d, forme = 'square', v = 0.12, f2) => { const o = audio.createOscillator(), g = audio.createGain(); o.type = forme; o.frequency.setValueAtTime(f, t0 + t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + t + d);
     g.gain.setValueAtTime(v * 2.2, t0 + t); g.gain.exponentialRampToValueAtTime(0.001, t0 + t + d); o.connect(g); g.connect(audio.destination); o.start(t0 + t); o.stop(t0 + t + d + 0.05); };
-  if (type === 'decompte') { for (let i = 0; i < 5; i++) { bip(330 + i * 40, i, 0.18, 'square', 0.14); bip(82 + i * 10, i, 0.9, 'sawtooth', 0.05, 90 + i * 12); } } // battements qui montent : suspense
-  if (type === 'go') { bip(523, 0, 0.12); bip(659, 0.1, 0.12); bip(784, 0.2, 0.35, 'square', 0.16); }
+  if (type === 'decompte') { for (let i = 0; i < 5; i++) bip(440, i, 0.12, 'triangle', 0.2); } // départ de course : bips courts, le « GO » plus aigu suit
+  if (type === 'go') { bip(880, 0, 0.45, 'triangle', 0.23); }
   if (type === 'cle') { bip(988, 0, 0.08, 'square', 0.12); bip(1319, 0.08, 0.25, 'square', 0.12); }
   if (type === 'rate') bip(220, 0, 0.12, 'triangle', 0.1, 160);
   if (type === 'tic') bip(1200, 0, 0.05, 'square', 0.06);
@@ -1273,7 +1273,7 @@ async function demarrer() {
   montrer('exterieur'); viser('accueil', true);
   mesures.pret = (performance.now() - DEBUT) / 1000; mesures.premier = total;
   // écran d'ouverture : le logo reste au moins 2,4 s avant de s'effacer en fondu
-  setTimeout(() => $('chargement').classList.add('fini'), Math.max(0, 2400 - (performance.now() - DEBUT)));
+  setTimeout(() => $('chargement').classList.add('fini'), Math.max(0, 2300 - (performance.now() - DEBUT)));
   $('jouer').disabled = false;
   // en arrière-plan : l'intérieur, la coupe, l'étage et le pommier
   const [inte, coupe, et, etage] = await Promise.all(['interieur', 'maison-coupe', 'maison-etage', 'etage'].map((n) => charger(n)));

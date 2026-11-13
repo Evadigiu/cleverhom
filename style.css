@@ -33,15 +33,14 @@ h1 { margin: 12px 0 8px; font-family: var(--police); font-weight: 700; font-size
 .mentions { margin: 0; text-align: center; font-size: 11px; color: var(--gris); }
 .mentions a { color: var(--gris); }
 
-.chargement { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; background: var(--fond); transition: opacity 0.9s ease, visibility 0s linear 0.9s; }
+.chargement { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; background: #fff; transition: opacity 0.6s ease, visibility 0s linear 0.9s; }
 .chargement.fini { opacity: 0; visibility: hidden; pointer-events: none; }
-.logo-ouverture { width: min(56vw, 240px); height: auto; opacity: 0; transform: scale(0.96); animation: apparition 1.1s ease forwards 0.15s; }
+.logo-ouverture { width: min(56vw, 240px); height: auto; opacity: 0; transform: scale(0.96); animation: apparition 0.9s ease forwards 0.15s, disparition 0.5s ease forwards 1.7s; }
+@keyframes disparition { to { opacity: 0; transform: scale(1.04); } }
 @keyframes apparition { to { opacity: 1; transform: scale(1); } }
-.barre { width: 120px; height: 4px; border-radius: 2px; background: #f3d9d0; overflow: hidden; opacity: 0; animation: apparition 0.6s ease forwards 0.8s; }
-.barre div { height: 100%; width: 0; background: var(--corail); transition: width 0.2s; }
 .chargement p { margin: 0; font-weight: 700; }
 .visuellement-cache { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-@media (prefers-reduced-motion: reduce) { .logo-ouverture, .barre { animation: none; opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .logo-ouverture { animation: none; opacity: 1; transform: none; } }
 
 .mesures { position: fixed; left: 8px; top: 50%; margin: 0; padding: 8px 10px; background: rgba(255, 255, 255, 0.92); border-radius: 10px; font: 11px/1.4 ui-monospace, monospace; color: #1f1d1c; }
 
