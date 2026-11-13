@@ -245,7 +245,7 @@ const NOEL = [
   { f: 'boule_deco', haut: 0.55, p: [[-6.3, -0.32, 2.6, 0], [-6.9, -0.32, 3.3, 1], [-3.5, -0.32, 0.4, 2]] },
   { f: 'sucres', haut: 0.6, p: [[-3.1, -0.32, 0.9, 0], [-3.1, -0.32, 2.1, 0], [-3.1, -0.32, 6.6, 0], [-3.1, -0.32, -0.3, 0]] },
   { f: 'bonhomme1', haut: 1.3, p: [[-7.0, -0.32, 3.7, -2.76], [-3.7, -0.32, 6.4, -2.4]] },        // bonshommes de neige (LeionaChung, bojackart)
-  { f: 'bonhomme2', haut: 1.0, p: [[-8.3, -0.32, 2.2, -1.19], [-2.9, -0.32, -1.6, -1.6]] },
+  { f: 'bonhomme2', haut: 1.0, p: [[-8.3, -0.32, 2.2, -1.19], [-4.6, -0.32, -2.5, -1.6]] },
   { f: 'guirlande', long: 0.9, p: [-9.3, -8.3, -7.3, -6.3, -5.3, -4.3].map((x) => [x, 1.15, 5.8, Math.PI / 2]), brille: true },
 ];
 const noel = { groupe: null, charge: null, boule: null, fait: false, dedans: false, pops: [] };
@@ -330,6 +330,19 @@ canvas.addEventListener('pointerup', (ev) => {
   souris.set((ev.clientX / innerWidth) * 2 - 1, -(ev.clientY / innerHeight) * 2 + 1); rayon.setFromCamera(souris, camera);
   if (rayon.intersectObject(noel.boule, true).length) ouvrirBoule();
 });
+
+// ---------- jardin : chaise longue sur la pelouse, jacinthe sur la terrasse (à la place du fauteuil suspendu) ----------
+const JARDIN = [
+  { f: 'chaise_longue', long: 1.75, p: [-3.05, -0.32, -1.3, Math.PI / 2] },   // Garden Lounge (scailman) : dossier vers la maison, pieds vers le jardin
+  { f: 'jacinthe', haut: 0.55, p: [-2.25, 0.0, 3.85, 0] },                    // Hyacinth (scadl)
+];
+function poserJardin() {
+  for (const d of JARDIN) charger('deco/' + d.f).then((g) => { const o = g.scene; const t = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+    o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
+    const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(d.p[0], d.p[1], d.p[2]); pivot.rotation.y = d.p[3];
+    o.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); scene.add(pivot); });
+}
 
 // ---------- vues de la maison ----------
 let vue = null;
@@ -645,7 +658,7 @@ async function demarrer() {
   const ATTENDU = 4.6e6; // maison, jardin et famille de départ
   for (const m of etat.membres.concat(VITRINE)) octets[m.avatar] = 0;
   const [ext, jardin] = await Promise.all(['maison-exterieur', 'jardin'].map((n) => charger(n, ATTENDU)));
-  coques.exterieur = ext.scene; scene.add(ext.scene, jardin.scene);
+  coques.exterieur = ext.scene; scene.add(ext.scene, jardin.scene); poserJardin();
   vue = 'exterieur'; await synchroniserFamille();
   montrer('exterieur'); viser('accueil', true);
   mesures.pret = (performance.now() - DEBUT) / 1000; mesures.premier = total;
