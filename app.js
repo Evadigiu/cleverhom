@@ -1284,6 +1284,12 @@ async function demarrer() {
   for (const m of etat.membres.concat(VITRINE)) octets[m.avatar] = 0;
   const [ext, jardin] = await Promise.all(['maison-exterieur', 'jardin'].map((n) => charger(n, ATTENDU)));
   herbeDense(ext.scene);
+  // une ancienne fenêtre basse de la maquette traînait derrière la baie vitrée et la coupait en deux : on la retire
+  { const L = []; ext.scene.traverse((m) => { if (m.isMesh && /^Window_(White_Metal|Metallic_Gold|glass)/.test(m.name)) L.push(m); }); for (const m of L) m.removeFromParent(); }
+  // derrière la baie vitrée (vue extérieure) : un fond intérieur uni et sombre, au lieu des murets coupés de la maquette qu'on devinait à travers le verre
+  { const c = document.createElement('canvas'); c.width = 4; c.height = 64; const g = c.getContext('2d'); const d = g.createLinearGradient(0, 0, 0, 64); d.addColorStop(0, '#3b3d40'); d.addColorStop(1, '#5a5650'); g.fillStyle = d; g.fillRect(0, 0, 4, 64);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 2.2), new THREE.MeshBasicMaterial({ map: t })); f.rotation.y = -Math.PI / 2; f.position.set(-0.1, 1.08, 2.1); ext.scene.add(f); }
   // la pelouse se prolonge jusqu'à l'horizon (sinon le ciel apparaît sous le terrain vu d'en haut)
   { const t = texHerbe().clone(); t.needsUpdate = true; t.repeat.set(120, 120); const sol = new THREE.Mesh(new THREE.CircleGeometry(160, 48), new THREE.MeshStandardMaterial({ map: t, color: '#c9d8b0', roughness: 1 }));
     sol.rotation.x = -Math.PI / 2; sol.position.set(2, -0.345, 5); sol.receiveShadow = true; scene.add(sol); }
