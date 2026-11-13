@@ -625,12 +625,6 @@
    "lien": "https://sketchfab.com/3d-models/2f2283cf4b5946488d05e744c86826ee"
   },
   {
-   "nom": "Bird house",
-   "auteur": "alban",
-   "licence": "CC Attribution",
-   "lien": "https://sketchfab.com/3d-models/4841c877ae9f4cf7b0f1f50306861a31"
-  },
-  {
    "nom": "the Golden Key",
    "auteur": "3DisFUNny",
    "licence": "CC Attribution",
@@ -653,16 +647,31 @@
    "auteur": "Medhatelo",
    "licence": "CC Attribution",
    "lien": "https://sketchfab.com/3d-models/706fe87e98c341c79c6978b2cdc5d10d"
+  },
+  {
+   "nom": "SIMPLE bird feeder",
+   "auteur": "sinnervoncrawsz",
+   "licence": "CC Attribution",
+   "lien": "https://sketchfab.com/3d-models/8c43b19261ee47089804e0b65daa373c"
+  },
+  {
+   "nom": "Gardener's Rake",
+   "auteur": "incg5764",
+   "licence": "CC Attribution",
+   "lien": "https://sketchfab.com/3d-models/dc7dbd5901c14b57afd08631f9d25572"
+  },
+  {
+   "nom": "Mesh Garden Gnome",
+   "auteur": "berriers",
+   "licence": "CC Attribution",
+   "lien": "https://sketchfab.com/3d-models/e2d712be51ea436588651802e51340c6"
   }
  ],
  "polyhaven": [
   "pachira_aquatica_01",
   "potted_plant_02",
-  "garden_gnome",
-  "planter_box_02",
   "potted_plant_01",
-  "rubber_boots",
-  "stone_fire_pit"
+  "rubber_boots"
  ],
  "rocketbox": "Microsoft Rocketbox Avatar Library (licence MIT)"
 }

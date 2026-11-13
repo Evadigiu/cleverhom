@@ -697,12 +697,11 @@ function arreterNaissance() {
 // ---------- chasse aux clés : trois clés cachées dans le jardin, à trouver en touchant les objets ----------
 // objets ajoutés au jardin (Poly Haven CC0 et Sketchfab CC BY) ; ils restent en place pour tout le parcours
 const CACHETTES = [
-  { id: 'nain', nom: 'le nain de jardin', haut: 0.75, p: [-6.6, -0.32, 1.7, -Math.PI / 2] },           // Garden Gnome (Poly Haven)
-  { id: 'nichoir', nom: 'la petite maison', haut: 0.5, p: [-7.15, -0.32, 0.55, -Math.PI / 2] },      // Bird house (alban)
-  { id: 'jardiniere', nom: 'la jardinière', long: 1.25, p: [-2.4, -0.32, 6.62, Math.PI] },           // Planter Box 02 (Poly Haven)
   { id: 'pot', nom: 'le grand pot', haut: 1.05, p: [-3.4, -0.12, 0.4, 0.3] },                         // Potted Plant 01 (Poly Haven)
   { id: 'bottes', nom: 'les bottes', haut: 0.37, p: [-0.62, -0.12, 0.42, -Math.PI / 2] },              // Rubber Boots (Poly Haven)
-  { id: 'brasero', nom: 'le brasero', long: 1.3, p: [-7.6, -0.32, 2.5, 0] },                          // Stone Fire Pit (Poly Haven)
+  { id: 'mangeoire', nom: 'la mangeoire', haut: 1.5, p: [-4.9, -0.32, -3.1, 0.4] },                    // SIMPLE bird feeder (sinnervoncrawsz), près des érables
+  { id: 'rateau', nom: 'le râteau', long: 1.55, debout: true, p: [-0.4, -0.12, -0.08, 0] },            // Gardener's Rake (incg5764), appuyé contre le bardage à gauche des bottes
+  { id: 'gnome', nom: 'le nain de jardin', haut: 0.55, p: [-1.7, -0.32, -0.75, -Math.PI / 2] },          // Mesh Garden Gnome (berriers), près des fleurs et de la chaise longue
   { id: 'balancelle', nom: 'la balancelle', long: 2.1, p: [-8.0, -0.32, 6.15, Math.PI] },              // Swing Bench (johhny_3D), dos à la haie, face au jardin
   { id: 'arrosoir', nom: "l'arrosoir", haut: 0.5, p: [-1.15, -0.32, -1.75, 0.5] },                    // Watering Can (taipl)
 ];
@@ -714,7 +713,7 @@ const g2 = (g) => g.scene.clone(true);
 async function poserCachettes() {
   const poser = (o, d) => { o.updateMatrixWorld(true); const t = new THREE.Box3().setFromObject(o, true).getSize(new THREE.Vector3()); o.scale.multiplyScalar(d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)); o.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(o, true), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z); const pv = new THREE.Group(); pv.add(o); return pv; };
-  await Promise.all(CACHETTES.map(async (d) => { const g = await charger('cles/' + d.id); const pv = poser(g.scene, d); pv.position.set(d.p[0], d.p[1], d.p[2]); pv.rotation.y = d.p[3];
+  await Promise.all(CACHETTES.map(async (d) => { const g = await charger('cles/' + d.id); if (d.debout) { const r = new THREE.Group(); r.add(g.scene); g.scene.rotation.z = Math.PI / 2 - 0.12; g.scene = r; } const pv = poser(g.scene, d); pv.position.set(d.p[0], d.p[1], d.p[2]); pv.rotation.y = d.p[3];
     pv.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.4; m.material.depthWrite = true; } } });
     scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); }));
   const ge = await charger('cles/erable');
