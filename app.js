@@ -61,6 +61,8 @@ const PLANS = {
   fete: { pos: [-3.8, 9.6, 9.8], cible: [3.4, 0.2, 3.4], fov: 52 },
   noelMaison: { pos: [10.4, 10.6, -4.5], cible: [5.0, 0.8, 2.0], fov: 48 }, // centré sur le joueur dans la maison
   fiche: { pos: [-20, 12, -8], cible: [0.5, -5.5, 3.0], fov: 46 },
+  cigogne: { pos: [-15, 15, -12], cible: [3.8, 5.0, 2.85], fov: 60 },  // toute la maison et le ciel autour
+  naissance: { pos: [-3.2, 6.6, 8.6], cible: [2.0, 0.4, 3.6], fov: 50 }, // le séjour, le lit au centre
 };
 let trajet = null; // transition douce de la caméra
 function viser(nom, immediat = false) {
@@ -139,7 +141,7 @@ async function synchroniserFamille() {
   placerFamille();
 }
 function placerFamille() {
-  if (feteActive) return;
+  if (feteActive || naissanceActive) return;
   const P = PLACES[VUES[vue]?.famille || 'exterieur']; let g = 0, b = 0;
   for (const m of familleAffichee()) { const it = instances.get(m.id); if (!it) continue;
     const animal = !!ANIMAUX[m.avatar]; const pl = animal ? P.betes[b++] : P.gens[g++];
@@ -207,7 +209,7 @@ function mursBlancs(oui) {
 }
 const NOEL_CACHE = /^(Stool_02_Wood_0|Flower-Vase|Phalaenopsis)/;
 const FETE_CACHE = /^(Material2|Flower-Vase|Phalaenopsis)/; // le salon (canapé, tapis, tables basses) laisse la place à la piste
-const cache = (nom, m) => { if (nom !== 'commun' && noelActif && NOEL_CACHE.test(m.name)) return true; if (nom !== 'commun' && feteActive && FETE_CACHE.test(m.name)) return true; const c = DECO[nom]?.cacher; return !!c && (typeof c === 'function' ? c(m) : c.test(m.name)); };
+const cache = (nom, m) => { if (nom !== 'commun' && noelActif && NOEL_CACHE.test(m.name)) return true; if (nom !== 'commun' && (feteActive || naissanceActive) && FETE_CACHE.test(m.name)) return true; const c = DECO[nom]?.cacher; return !!c && (typeof c === 'function' ? c(m) : c.test(m.name)); };
 async function poserDeco(nom) {
   if (decoPosee[nom]) return decoPosee[nom]; const D = DECO[nom];
   const groupe = new THREE.Group(); decoPosee[nom] = groupe; groupe.visible = false; scene.add(groupe);
@@ -222,7 +224,7 @@ async function poserDeco(nom) {
 // meubles du rez-de-chaussée visibles quand l'intérieur l'est, ceux de l'étage quand l'étage l'est
 function visibiliteDeco() {
   for (const [k, g] of Object.entries(decoPosee)) { g.visible = k === 'commun' || k === styleActif;
-    for (const p of g.children) p.visible = (p.userData.etage ? !!decor.etage?.visible : !!decor.interieur?.visible) && !(noelActif && /^(table|tulipes)$/.test(p.userData.f)) && !(feteActive && /^(canape|tapis|fauteuil|tablebasse|lampe|tulipes)$/.test(p.userData.f)); }
+    for (const p of g.children) p.visible = (p.userData.etage ? !!decor.etage?.visible : !!decor.interieur?.visible) && !(noelActif && /^(table|tulipes)$/.test(p.userData.f)) && !((feteActive || naissanceActive) && /^(canape|tapis|fauteuil|tablebasse|lampe|tulipes)$/.test(p.userData.f)); }
 }
 async function appliquerStyle(nom) {
   styleActif = nom;
@@ -400,7 +402,7 @@ async function amenagerPiece(id) {
 
 // ---------- l'aventure de la crémaillère ----------
 // tous les personnages du jeu arrivent par la porte d'entrée à la queue leu leu, puis dansent dans le salon devenu piste
-let feteActive = false;
+let feteActive = false, naissanceActive = false;
 const FETE = [
   { f: 'piste', long: 2.5, p: [[1.55, 0.02, 4.2, 0]] },                                 // Animated Dance Floor (wwwuengy)
   { f: 'boule', haut: 1.0, p: [[1.55, 1.75, 4.2, 0]] },                                  // Animated Disco Ball (GrafilArtwork), suspendue au-dessus de la piste
@@ -550,6 +552,99 @@ function arreterFete() {
   appliquerStyle(styleActif); placerFamille();
 }
 
+// ---------- aventure « La famille s'agrandit » ----------
+// une cigogne fait le tour de la maison, descend dans le salon, « pouf » : un bébé apparaît dans son lit, la famille l'entoure
+const nais = { groupe: null, charge: null, cigogne: null, mixer: null, nuage: null, nuageMats: [], lit: null, t: 0, faite: false, pouf: false, famille: false, emoji: 0 };
+const BERCEAU = new THREE.Vector3(1.55, 0, 4.2);   // au milieu du séjour, entre le canapé et la table
+const TOUR = { c: new THREE.Vector3(3.8, 8.2, 2.85), r: 6.5, duree: 6.5 }; // tour de la maison
+const T_DESCENTE = 6.5, T_POUF = 9.0;
+async function chargerNaissance() {
+  if (nais.charge) return nais.charge;
+  nais.groupe = new THREE.Group(); nais.groupe.visible = false; scene.add(nais.groupe);
+  const poser = (o, taille, axe = 'y') => { o.updateMatrixWorld(true); o.traverse((x) => { if (x.isSkinnedMesh) x.skeleton.update(); }); const t = new THREE.Box3().setFromObject(o, true).getSize(new THREE.Vector3()); o.scale.multiplyScalar(taille / (axe === 'y' ? t.y : Math.max(t.x, t.z))); o.updateMatrixWorld(true); o.traverse((x) => { if (x.isSkinnedMesh) x.skeleton.update(); });
+    const b = new THREE.Box3().setFromObject(o, true), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z); const p = new THREE.Group(); p.add(o); return p; };
+  nais.charge = Promise.all(['deco/bebe_lit', 'naissance/bebe', 'naissance/cigogne', 'naissance/nuage'].map((f) => charger(f))).then(([gl, gb, gc, gn]) => {
+    // le lit à barreaux blanc de la chambre de l'étage
+    const lit = poser(gl.scene.clone(true), 1.25, 'long'); lit.position.copy(BERCEAU); lit.visible = false; nais.groupe.add(lit); nais.lit = lit;
+    lit.traverse((m) => { if (m.isMesh) { m.castShadow = false; m.frustumCulled = false; } });
+    // le bébé : livré debout bras en croix, on lui baisse les bras puis on le couche sur le dos dans le lit
+    const b = SkeletonUtils.clone(gb.scene); b.updateMatrixWorld(true);
+    b.traverse((x) => { if (x.isMesh) { x.castShadow = false; x.frustumCulled = false; x.material = x.material.clone(); x.material.transparent = false; x.material.alphaTest = 0.5; x.material.depthWrite = true; } if (!x.isBone || !/(L|R)_Upperarm_\d+$/.test(x.name)) return;
+      const p = x.getWorldPosition(new THREE.Vector3()); const d = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (p.x > 0 ? -1 : 1) * 1.22);
+      const pq = x.parent.getWorldQuaternion(new THREE.Quaternion()); x.quaternion.premultiply(pq.clone().invert().multiply(d).multiply(pq)); });
+    const couche = new THREE.Group(); couche.add(b); b.rotation.x = -Math.PI / 2; // tête vers -z, visage vers le ciel
+    const bebe = poser(couche, 0.52, 'long'); lit.updateMatrixWorld(true);
+    const bl = new THREE.Box3().setFromObject(lit, true), sl = bl.getSize(new THREE.Vector3());
+    if (sl.x > sl.z) bebe.rotation.y = Math.PI / 2; // le bébé dans le sens de la longueur du lit
+    // hauteur du matelas : un rayon lancé au centre du lit
+    rayon.set(new THREE.Vector3(BERCEAU.x, bl.max.y + 1, BERCEAU.z), new THREE.Vector3(0, -1, 0)); const h = rayon.intersectObject(lit, true)[0];
+    bebe.position.set(BERCEAU.x, (h ? h.point.y : bl.min.y + sl.y * 0.45) + 0.01, BERCEAU.z); bebe.visible = false; nais.groupe.add(bebe); nais.bebe = bebe;
+    // la cigogne (regarde vers -z dans le modèle) et son battement d'ailes
+    const c = poser(gc.scene, 2.6, 'long'); // envergure de conte, pour qu'on la voie bien c.children[0].rotation.y = Math.PI; c.traverse((m) => { if (m.isMesh) { m.castShadow = false; m.frustumCulled = false; } });
+    nais.groupe.add(c); nais.cigogne = c; nais.mixer = new THREE.AnimationMixer(c.children[0]); for (const a of gc.animations) nais.mixer.clipAction(a).play();
+    // le nuage du « pouf »
+    const n = poser(gn.scene, 1.6, 'y'); n.visible = false; n.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.material.depthWrite = false; m.material.emissive = new THREE.Color('#ffffff'); m.material.emissiveIntensity = 0.55; nais.nuageMats.push(m.material); m.frustumCulled = false; } });
+    nais.groupe.add(n); nais.nuage = n;
+  });
+  return nais.charge;
+}
+// trajectoire de la cigogne au temps t
+function volCigogne(t) {
+  if (t < T_DESCENTE) { const a = -Math.PI / 2 + (t / TOUR.duree) * Math.PI * 2; return new THREE.Vector3(TOUR.c.x + Math.cos(a) * TOUR.r, TOUR.c.y + Math.sin(t * 1.3) * 0.4, TOUR.c.z + Math.sin(a) * TOUR.r); }
+  const depart = volCigogne(T_DESCENTE - 0.001), arrivee = BERCEAU.clone().add(new THREE.Vector3(0, 1.7, 0));
+  if (t < T_POUF) { const k = (t - T_DESCENTE) / (T_POUF - T_DESCENTE), e = k * k * (3 - 2 * k); const milieu = new THREE.Vector3((depart.x + arrivee.x) / 2 - 3, 7, (depart.z + arrivee.z) / 2 + 2);
+    return depart.clone().multiplyScalar((1 - e) * (1 - e)).add(milieu.multiplyScalar(2 * e * (1 - e))).add(arrivee.clone().multiplyScalar(e * e)); }
+  const k = t - T_POUF; return arrivee.clone().add(new THREE.Vector3(2.4 * k, 1.8 * k, -1.6 * k)); // repart vers le ciel, loin de la caméra
+}
+async function lancerNaissance() {
+  if (nais.faite) return; nais.faite = true; naissanceActive = true; nais.t = 0; nais.pouf = false; nais.famille = false;
+  await chargerNaissance(); if (!nais.faite) return;
+  nais.groupe.visible = true; nais.cigogne.visible = true; nais.lit.visible = nais.bebe.visible = nais.nuage.visible = false;
+  try { await renderer.compileAsync(nais.groupe, camera, scene); } catch (e) { /* compilation à la première image */ }
+  dessiner();
+}
+// la famille entoure le lit et se réjouit (applaudit ou lève les bras)
+async function familleAutourDuBebe() {
+  const M = familleAffichee(); let i = 0; const n = Math.max(3, M.length);
+  for (const m of M) { const it = instances.get(m.id); if (!it) continue; const a = -Math.PI * 0.85 + (i++ / n) * Math.PI * 1.7, r = ANIMAUX[m.avatar] ? 1.3 : 0.95;
+    it.obj.visible = true; it.obj.position.set(BERCEAU.x + Math.cos(a) * r, 0, BERCEAU.z + Math.sin(a) * r); it.obj.lookAt(BERCEAU.x, 0, BERCEAU.z);
+    if (ANIMAUX[m.avatar]) it.obj.rotation.y += ANIMAUX[m.avatar].r;
+    else if (it.mixer) { const c = await clipFete(SEXE(m.avatar) + (i % 2 ? '_claphands_01' : '_cheer_01'), ENFANT(m.avatar)); if (!nais.faite) return; it.mixer.stopAllAction(); it.mixer.clipAction(c).reset().play(); } }
+}
+// emojis qui montent au-dessus de la famille
+let bulles = null;
+function emoji() {
+  if (!bulles) { bulles = document.createElement('div'); bulles.className = 'emojis'; document.body.appendChild(bulles); }
+  const p = BERCEAU.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2.2, 1.2 + Math.random() * 0.7, (Math.random() - 0.5) * 2.2)).project(camera);
+  if (Math.abs(p.x) > 1 || Math.abs(p.y) > 1) return;
+  const s = document.createElement('span'); s.textContent = ['👶', '❤️', '💕', '🍼', '💖', '👶'][Math.floor(Math.random() * 6)];
+  s.style.left = ((p.x + 1) / 2 * 100) + '%'; s.style.top = ((1 - p.y) / 2 * 100) + '%'; s.style.fontSize = (22 + Math.random() * 16) + 'px';
+  bulles.appendChild(s); setTimeout(() => s.remove(), 2600);
+}
+function avancerNaissance(dt) {
+  if (!naissanceActive || !nais.cigogne) return; const t = (nais.t += dt);
+  nais.mixer.update(dt);
+  // la cigogne rapetisse une fois dans la maison
+  if (nais.cigogne.visible) { const p = volCigogne(t); nais.cigogne.position.copy(p); nais.cigogne.lookAt(volCigogne(t + 0.08));
+    nais.cigogne.scale.setScalar(t < T_DESCENTE ? 1 : Math.max(0.5, 1 - 0.5 * (t - T_DESCENTE) / (T_POUF - T_DESCENTE)));
+    if (t > T_POUF + 3) nais.cigogne.visible = false; }
+  // en milieu de descente, la caméra quitte l'extérieur pour la maison ouverte
+  if (t >= T_DESCENTE + 0.6 && vue !== 'coupe') { montrer('coupe', false); appliquerStyle(styleActif); visibiliteDeco(); viser('naissance'); }
+  // « pouf » : le nuage gonfle d'un coup, le lit et le bébé apparaissent derrière, puis le nuage se dissipe
+  if (t >= T_POUF - 0.25 && t < T_POUF + 1.4) { const k = (t - (T_POUF - 0.25)) / 1.65; nais.nuage.visible = true; nais.nuage.position.copy(BERCEAU).add(new THREE.Vector3(0, -0.1, 0));
+    nais.nuage.scale.setScalar(Math.min(1, k * 5) * (1 + k * 0.6)); for (const m of nais.nuageMats) m.opacity = k < 0.35 ? 1 : Math.max(0, 1 - (k - 0.35) / 0.65); }
+  else if (nais.nuage.visible && t >= T_POUF + 1.4) nais.nuage.visible = false;
+  if (!nais.pouf && t >= T_POUF) { nais.pouf = true; nais.lit.visible = nais.bebe.visible = true; confettis(); dessiner(); }
+  if (!nais.famille && t >= T_POUF + 0.5) { nais.famille = true; familleAutourDuBebe(); }
+  if (nais.famille && (nais.emoji -= dt) <= 0) { nais.emoji = 0.28; emoji(); }
+}
+function arreterNaissance() {
+  if (!nais.faite) return; nais.faite = false; naissanceActive = false; nais.t = 0; nais.pouf = false; nais.famille = false;
+  if (nais.groupe) nais.groupe.visible = false; if (bulles) bulles.textContent = ''; appliquerStyle(styleActif);
+  for (const m of etat.membres) { const it = instances.get(m.id); const g = modeles[m.avatar]; if (it?.mixer && g) g.then((gg) => { it.mixer.stopAllAction(); if (gg.animations[0]) it.mixer.clipAction(gg.animations[0]).play(); }); }
+  placerFamille();
+}
+
 // ---------- vues de la maison ----------
 let vue = null;
 const VUES = {
@@ -664,7 +759,7 @@ const PIECE = [['bebe', 'Chambre de bébé', 'pour la suite'], ['bureau', 'Burea
 const AVENTURES = [
   ['noel', 'La bombe de Noël', 'Une boule éclate et toute la maison s’habille de lumières et de neige.', 'De saison', '#c4d000'],
   ['fete', 'La crémaillère', 'Guirlandes, platines et grande tablée : les voisins débarquent.', 'Avec les voisins', '#e6ec9a'],
-  ['bebe', 'La famille s’agrandit', 'Une cigogne arrive : la pièce de 9 m² devient la chambre de bébé.', 'Une maison qui évolue', '#f5f8d2'],
+  ['bebe', 'La famille s’agrandit', 'Une cigogne fait le tour de la maison et dépose un bébé dans le séjour.', 'Une maison qui évolue', '#f5f8d2'],
 ];
 const libelle = (liste, id) => (liste.find((x) => x[0] === id) || [, '—'])[1];
 
@@ -756,10 +851,9 @@ const ECRANS = {
   aventures: {
     vue: 'exterieur', plan: 'aventures', etape: '4/4',
     intitule: 'Votre aventure ?',
-    contenu: () => `<div class="tuiles grandes">${AVENTURES.map(([id, t]) => tuile(id, '', etat.aventure === id, t)).join('')}</div>`
-      + (etat.aventure === 'bebe' ? `<p class="message">Bientôt disponible</p>` : ''),
-    clic: (id) => { etat.aventure = id; if (id === 'noel') { chargerNoel(); montrerBoule(); } if (id === 'fete') chargerFete(); },
-    suite: () => etat.aventure === 'noel' || etat.aventure === 'fete' ? 'Commencer l’aventure' : 'Voir ma maison', pret: () => !!etat.aventure,
+    contenu: () => `<div class="tuiles grandes">${AVENTURES.map(([id, t]) => tuile(id, '', etat.aventure === id, t)).join('')}</div>`,
+    clic: (id) => { etat.aventure = id; if (id === 'noel') { chargerNoel(); montrerBoule(); } if (id === 'fete') chargerFete(); if (id === 'bebe') chargerNaissance(); },
+    suite: () => etat.aventure ? 'Commencer l’aventure' : 'Voir ma maison', pret: () => !!etat.aventure,
   },
   fete: {
     vue: 'coupe', plan: 'fete', etape: '🥂',
@@ -767,6 +861,12 @@ const ECRANS = {
     contenu: () => `<div class="tuiles">${tuile('son', musique.on ? 'Musique' : 'Muet', musique.on, musique.on ? 'Couper la musique' : 'Remettre la musique')}${tuile('fort', 'Monter le son', fete.volume > 1, 'Monter le son')}</div>`,
     clic: (id) => { if (id === 'son') { if (musique.on) arreterMusique(); else demarrerMusique(); } if (id === 'fort') monterLeSon(); },
     suite: () => fete.faite ? 'Voir ma maison' : 'Lancer la fête', pret: () => true,
+  },
+  naissance: {
+    vue: 'exterieur', plan: 'cigogne', etape: '👶',
+    intitule: () => nais.pouf ? 'Bienvenue bébé !' : 'Une cigogne approche…',
+    contenu: () => '',
+    suite: () => 'Voir ma maison', pret: () => nais.pouf,
   },
   noel: {
     vue: 'exterieur', plan: 'noel', etape: '🎄',
@@ -795,6 +895,7 @@ function aller(nom) {
   if (document.body.dataset.rituel) rituel(null);
   if (noel.fait && nom !== 'noel' && nom !== 'fiche') cacherNoel();
   if (fete.faite && nom !== 'fete' && nom !== 'fiche') arreterFete();
+  if (nais.faite && nom !== 'naissance' && nom !== 'fiche') arreterNaissance();
   if (nom === 'fiche' && noel.groupe) for (const p of noel.groupe.children) if (p.userData.facade) p.visible = true;
   if (nom !== 'fete') arreterMusique(); // l'écran de fin doit capter l'attention : plus de musique
   ecran = nom; document.body.dataset.ecran = nom; synchroniserFamille();
@@ -863,11 +964,12 @@ $('suite').addEventListener('click', () => {
     etat.prenomManquant = false; }
   if (ecran === 'aventures' && etat.aventure === 'noel') { aller('noel'); return; }
   if (ecran === 'aventures' && etat.aventure === 'fete') { aller('fete'); lancerFete().then(dessiner); return; }
-  if (ecran === 'fete') { aller('fiche'); return; }
+  if (ecran === 'aventures' && etat.aventure === 'bebe') { aller('naissance'); lancerNaissance().then(dessiner); return; }
+  if (ecran === 'fete' || ecran === 'naissance') { aller('fiche'); return; }
   if (ecran === 'noel') { if (!noel.fait) { ouvrirBoule(); return; } if (!noel.dedans) { vueNoel(true); dessiner(); return; } aller('fiche'); return; }
   aller(ORDRE[ORDRE.indexOf(ecran) + 1]);
 });
-$('retour').addEventListener('click', () => aller(ecran === 'noel' || ecran === 'fete' ? 'aventures' : ecran === 'fiche' && noel.fait ? 'noel' : ORDRE[Math.max(0, ORDRE.indexOf(ecran) - 1)]));
+$('retour').addEventListener('click', () => aller(ecran === 'noel' || ecran === 'fete' || ecran === 'naissance' ? 'aventures' : ecran === 'fiche' && noel.fait ? 'noel' : ORDRE[Math.max(0, ORDRE.indexOf(ecran) - 1)]));
 $('jouer').addEventListener('click', () => { aller('arbre'); if (!etat.introVue) { etat.introVue = true; rituel('intro'); } });
 
 // ---------- démarrage ----------
@@ -902,7 +1004,7 @@ let images = 0, t0 = performance.now(), lent = 0;
 const horloge = new THREE.Clock(); const tmp = new THREE.Vector3();
 function image(dt) {
   for (const mx of mixers) mx.update(dt);
-  avancerTrajet(dt); avancerCroissance(dt); avancerNoel(dt); avancerFete(dt); controls.update(); renderer.render(scene, camera);
+  avancerTrajet(dt); avancerCroissance(dt); avancerNoel(dt); avancerFete(dt); avancerNaissance(dt); controls.update(); renderer.render(scene, camera);
   const b = ECRANS[ecran]?.bulle; const bulle = $('bulle');
   if (b && !trajet) { tmp.set(...b.p).project(camera); bulle.hidden = tmp.z > 1; bulle.textContent = b.t; bulle.style.left = ((tmp.x + 1) / 2) * innerWidth + 'px'; bulle.style.top = ((1 - tmp.y) / 2) * innerHeight + 'px';
     // pas de bulle par-dessus le bandeau ou le panneau (petits écrans) : elle cacherait les boutons
@@ -921,6 +1023,7 @@ window.__tuile = (W, H, x, y, w, h) => { renderer.setPixelRatio(1); renderer.set
   camera.aspect = W / H; camera.setViewOffset(W, H, x, y, w, h); camera.updateProjectionMatrix(); renderer.render(scene, camera); };
 window.__bureau = () => { const L = []; decor.etage?.traverse((m) => { if (/bureau/.test(m.name)) L.push(m.type + ':' + m.name + ':' + m.visible); }); return L.join(' | ') + ' // posés ' + Object.keys(piecePosee).join(','); };
 window.__fete = (t = 12) => { for (let i = 0; i < t * 10; i++) avancerFete(0.1); };
+window.__naissance = (t = 12) => { for (let i = 0; i < t * 20; i++) avancerNaissance(0.05); };
 window.__aller = (n) => { aller(n); if (trajet) { trajet.t = 1; avancerTrajet(0); } };
 window.__rituel = async (n, t = 1) => { if (n === 'plaque') { await ceremonie(); if (trajet) { trajet.t = 1; avancerTrajet(0); } if (croissance) { croissance.t = 0; avancerCroissance(2.6 * t); } } else rituel(n); };
 window.__famille = () => [...instances.entries()].map(([id, it]) => [id, it.avatar, it.obj.visible, it.obj.position.toArray().map((v) => +v.toFixed(2)), new THREE.Box3().setFromObject(it.obj).getSize(new THREE.Vector3()).toArray().map((v) => +v.toFixed(2))]);
