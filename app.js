@@ -415,7 +415,7 @@ function poserJardin() {
   const modeles = {}; for (const d of JARDIN) (modeles[d.f] ||= charger('deco/' + d.f)).then((g) => { const o = g.scene.clone(true); const t = new THREE.Box3().setFromObject(o, true).getSize(new THREE.Vector3());
     o.scale.multiplyScalar((d.haut ? d.haut / t.y : d.long / Math.max(t.x, t.z)) * ECHELLE); o.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(o, true), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z);
-    const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(d.p[0], d.p[1], d.p[2]); pivot.rotation.y = d.p[3]; if (d.f === 'livres') livres = pivot; jardinPivots[d.f] ||= pivot;
+    const pivot = new THREE.Group(); pivot.add(o); pivot.position.set(d.p[0], d.p[1], d.p[2]); pivot.rotation.y = d.p[3]; if (d.f === 'livres') livres = pivot; jardinPivots[d.f] ||= pivot; if (d.f === 'jacinthe') pivot.visible = ecran === 'cles' || ecran === 'fin';
     o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true;
       if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.25; m.material.depthWrite = true; } }); scene.add(pivot); });
 }
@@ -737,7 +737,7 @@ async function poserCachettes() {
     const b = new THREE.Box3().setFromObject(o, true), c = b.getCenter(new THREE.Vector3()); o.position.set(-c.x, -b.min.y, -c.z); const pv = new THREE.Group(); pv.add(o); return pv; };
   await Promise.all(CACHETTES.map(async (d) => { const g = await charger('cles/' + d.id); if (d.debout) { const r = new THREE.Group(); r.add(g.scene); g.scene.rotation.z = Math.PI / 2 - 0.12; g.scene = r; } const pv = poser(g.scene, d); pv.position.set(d.p[0], d.p[1], d.p[2]); pv.rotation.y = d.p[3];
     pv.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; if (m.material.transparent) { m.material.transparent = false; m.material.alphaTest = 0.4; m.material.depthWrite = true; } } });
-    scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); }));
+    pv.visible = !OBJETS_DU_JEU.test(d.id) || ecran === 'cles' || ecran === 'fin'; scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); }));
   const ge = await charger('cles/erable');
   for (const d of ERABLES) { const pv = poser(g2(ge), { haut: 4.3 }); pv.position.set(d.p[0], d.p[1], d.p[2]); pv.rotation.y = d.p[3];
     pv.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); scene.add(pv); cles.objets.push({ id: d.id, nom: d.nom, o: pv }); }
@@ -1189,7 +1189,11 @@ const ECRANS = {
 };
 
 let ecran = 'accueil';
+// à l'accueil, le jardin reste épuré : les petits objets du jeu n'apparaissent qu'au lancement de la partie
+const OBJETS_DU_JEU = /^(bottes|rateau|gnome|arrosoir|pot|terracotta|chat|skate|foot|niche|mangeoire|jacinthe)$/;
+function objetsDuJeu(visibles) { for (const o of cles.objets) if (OBJETS_DU_JEU.test(o.id)) o.o.visible = visibles; if (jardinPivots.jacinthe) jardinPivots.jacinthe.visible = visibles; }
 function aller(nom) {
+  objetsDuJeu(nom === 'cles' || nom === 'fin');
   if (document.body.dataset.rituel) rituel(null);
   if (noel.fait && nom !== 'noel' && nom !== 'fiche') cacherNoel();
   if (fete.faite && nom !== 'fete' && nom !== 'fiche') arreterFete();
