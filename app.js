@@ -114,12 +114,16 @@ function modele(avatar) {
   return modeles[avatar];
 }
 let familleVisible = true;
+// accueil : une famille d'exemple pour le décor (le joueur seul + un conjoint, une fillette et un golden retriever).
+// Elle n'entre jamais dans les données : dès le parcours commencé, seule la vraie famille est affichée.
+const VITRINE = [{ id: 'v1', avatar: 'hb6', type: 'adulte' }, { id: 'v2', avatar: 'fille1', type: 'enfant' }, { id: 'v3', avatar: 'chien', type: 'animal' }];
+const familleAffichee = () => ecran === 'accueil' && etat.membres.length === 1 ? etat.membres.concat(VITRINE) : etat.membres;
 async function synchroniserFamille() {
-  const ids = new Set(etat.membres.map((m) => m.id));
+  const liste = familleAffichee(); const ids = new Set(liste.map((m) => m.id));
   for (const [id, it] of instances) if (!ids.has(id)) { scene.remove(it.obj); if (it.mixer) mixers.delete(it.mixer); instances.delete(id); }
-  await Promise.all(etat.membres.map(async (m) => {
+  await Promise.all(liste.map(async (m) => {
     const it = instances.get(m.id); if (it && it.avatar === m.avatar) return;
-    const g = await modele(m.avatar); if (etat.membres.find((x) => x.id === m.id)?.avatar !== m.avatar) return;
+    const g = await modele(m.avatar); if (!familleAffichee().some((x) => x.id === m.id && x.avatar === m.avatar)) return;
     const old = instances.get(m.id); if (old) { scene.remove(old.obj); if (old.mixer) mixers.delete(old.mixer); }
     let obj, mixer = null;
     if (ANIMAUX[m.avatar]) { obj = new THREE.Group(); const c = SkeletonUtils.clone(g.scene); obj.add(c); const bb = new THREE.Box3().setFromObject(c); c.scale.setScalar(ANIMAUX[m.avatar].h / (bb.max.y - bb.min.y)); c.updateMatrixWorld(true); const b2 = new THREE.Box3().setFromObject(c); const cc = b2.getCenter(new THREE.Vector3()); c.position.set(-cc.x, -b2.min.y, -cc.z); }
@@ -127,7 +131,7 @@ async function synchroniserFamille() {
     obj.traverse((x) => { if (x.isMesh) { x.castShadow = true; x.frustumCulled = false; } });
     obj.updateMatrixWorld(true); const h = new THREE.Box3().setFromObject(obj).max.y;
     try { await renderer.compileAsync(obj, camera, scene); } catch (e) { /* ancien navigateur : compilation à la première image */ }
-    if (etat.membres.find((x) => x.id === m.id)?.avatar !== m.avatar) return;
+    if (!familleAffichee().some((x) => x.id === m.id && x.avatar === m.avatar)) return;
     const deja = instances.get(m.id); if (deja) { scene.remove(deja.obj); if (deja.mixer) mixers.delete(deja.mixer); }
     dernierChargement = performance.now(); if (mixer) mixers.add(mixer); scene.add(obj); instances.set(m.id, { avatar: m.avatar, obj, mixer, h });
   }));
@@ -135,7 +139,7 @@ async function synchroniserFamille() {
 }
 function placerFamille() {
   const P = PLACES[VUES[vue]?.famille || 'exterieur']; let g = 0, b = 0;
-  for (const m of etat.membres) { const it = instances.get(m.id); if (!it) continue;
+  for (const m of familleAffichee()) { const it = instances.get(m.id); if (!it) continue;
     const animal = !!ANIMAUX[m.avatar]; const pl = animal ? P.betes[b++] : P.gens[g++];
     it.obj.visible = familleVisible && !!pl && !(animal && vue === 'etage');
     if (pl) { it.obj.position.set(pl[0], pl[1], pl[2]); it.obj.rotation.y = pl[3] + (animal ? ANIMAUX[m.avatar].r : 0); } }
@@ -563,7 +567,7 @@ function aller(nom) {
   if (document.body.dataset.rituel) rituel(null);
   if (noel.fait && nom !== 'noel' && nom !== 'fiche') cacherNoel();
   if (nom === 'fiche' && noel.groupe) for (const p of noel.groupe.children) if (p.userData.facade) p.visible = true;
-  ecran = nom; document.body.dataset.ecran = nom;
+  ecran = nom; document.body.dataset.ecran = nom; synchroniserFamille();
   if (nom === 'noel') montrerBoule(); else if (noel.boule) noel.boule.visible = false;
   const e = ECRANS[nom];
   $('question').hidden = $('panneau').hidden = !e; $('bulle').hidden = true;
@@ -639,7 +643,7 @@ const mesures = {};
 async function demarrer() {
   CATALOGUE = await (await fetch('assets/avatars/catalogue.json?v=' + Date.now())).json();
   const ATTENDU = 4.6e6; // maison, jardin et famille de départ
-  for (const m of etat.membres) octets[m.avatar] = 0;
+  for (const m of etat.membres.concat(VITRINE)) octets[m.avatar] = 0;
   const [ext, jardin] = await Promise.all(['maison-exterieur', 'jardin'].map((n) => charger(n, ATTENDU)));
   coques.exterieur = ext.scene; scene.add(ext.scene, jardin.scene);
   vue = 'exterieur'; await synchroniserFamille();
