@@ -757,7 +757,7 @@ function lancerChasse() {
   // les clés ne se cachent que dans la partie du jardin bien visible : ni le long du côté de la maison (érables), ni derrière
   const accessible = (o) => { const c = new THREE.Box3().setFromObject(o.o).getCenter(new THREE.Vector3()); return c.z > -1.3 && c.x < -0.2 && c.x > -9.2; };
   const dispo = cles.objets.filter((o) => o.o.parent && o.o.visible && accessible(o)); const melange = dispo.map((o) => [Math.random(), o]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
-  cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.trouvees = 0; cles.temps = DUREE_JEU; cles.en_cours = true; cles.fini = false; cles.indice = false; cles.debut = performance.now(); son('go'); setTimeout(() => musiqueJeu(true), 450); dessiner(); astuce('💡 Astuce : pincez pour zoomer, glissez pour faire le tour du jardin. Les clés peuvent être n’importe où… même sous la famille !');
+  cles.avec = new Set(melange.slice(0, 3).map((o) => o.id)); cles.joue = true; cles.trouvees = 0; cles.temps = DUREE_JEU; cles.en_cours = true; cles.fini = false; cles.indice = false; cles.debut = performance.now(); son('go'); setTimeout(() => musiqueJeu(true), 450); dessiner(); astuce('💡 Astuce : pincez pour zoomer, glissez pour faire le tour du jardin. Les clés peuvent être n’importe où… même sous la famille !');
 }
 function message(txt) { let t = $('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
   t.textContent = txt; t.classList.remove('vu'); void t.offsetWidth; t.classList.add('vu'); }
@@ -861,7 +861,12 @@ function regles() {
     <button type="button" class="jouer">C’est parti !</button></div>`;
   document.body.appendChild(d); d.querySelector('button').addEventListener('click', () => { son('tic'); d.remove(); setTimeout(decompte, 300); });
 }
-function lancerJeu(direct) { arreterChasse(); cles.fini = cles.indice = false; cles.reussi = false; cles.pret = false; aller('cles'); if (direct) setTimeout(decompte, 600); else setTimeout(regles, 500); }
+// 2 essais au maximum par appareil (compteur gardé dans le navigateur, rien n'est transmis)
+const ESSAIS_MAX = 2;
+const essais = () => { try { return +localStorage.getItem('essais_cles') || 0; } catch (e) { return 0; } };
+const compterEssai = () => { try { localStorage.setItem('essais_cles', essais() + 1); } catch (e) { /* stockage indisponible */ } };
+const encoreUnEssai = () => essais() < ESSAIS_MAX;
+function lancerJeu(direct) { if (!encoreUnEssai()) { aller('fin'); return; } compterEssai(); arreterChasse(); cles.fini = cles.indice = false; cles.reussi = false; cles.pret = false; aller('cles'); if (direct) setTimeout(decompte, 600); else setTimeout(regles, 500); }
 // clé manquée : elle sort de sa cachette, en tournant, dans un faisceau de lumière
 let faisceauMat = null;
 function montrerCle(o) {
@@ -1133,11 +1138,11 @@ const ECRANS = {
   },
   fin: {
     vue: 'exterieur', plan: 'accueil', etape: '🎁',
-    intitule: () => cles.reussi ? 'Bravo ! 🏆' : 'Si près du but ! 😱',
-    contenu: () => cles.reussi
+    intitule: () => !cles.joue ? 'Merci d’avoir joué ! 🙌' : cles.reussi ? 'Bravo ! 🏆' : 'Si près du but ! 😱',
+    contenu: () => !cles.joue ? `<div class="cadeau"><b>Vos 2 essais ont déjà été utilisés.</b><span>Venez dire bonjour à un conseiller Clever’hom, il sera ravi de vous faire découvrir la maison !</span></div>` : cles.reussi
       ? `<div class="cadeau"><p class="etoiles">${cles.duree <= 15 ? '⭐⭐⭐' : cles.duree <= 30 ? '⭐⭐' : '⭐'}</p><b>3 clés en ${cles.duree} secondes : ${cles.duree <= 15 ? 'des yeux de lynx 🐱' : cles.duree <= 30 ? 'une dextérité de chamois 🐐' : 'une ténacité de bouledogue 🐶'} !</b><span>🎁 Un petit cadeau vous attend : montrez cet écran à un conseiller Clever’hom pour le récupérer.</span></div>`
-      : `<div class="cadeau"><p class="etoiles">${'🔑'.repeat(cles.trouvees)}${'▫️'.repeat(3 - cles.trouvees)}</p><b>${cles.trouvees} clé${cles.trouvees > 1 ? 's' : ''} sur 3… la revanche ?</b><span>Rejouez tout de suite, ou venez dire bonjour à un conseiller Clever’hom !</span></div>`,
-    suite: () => cles.reussi ? 'Rejouer pour battre mon temps' : 'Je retente ma chance !', pret: () => true,
+      : `<div class="cadeau"><p class="etoiles">${'🔑'.repeat(cles.trouvees)}${'▫️'.repeat(3 - cles.trouvees)}</p><b>${cles.trouvees} clé${cles.trouvees > 1 ? 's' : ''} sur 3… la revanche ?</b><span>${encoreUnEssai() ? 'Il vous reste un essai, ou venez dire bonjour à un conseiller Clever’hom !' : 'Vos 2 essais sont utilisés. Merci d’avoir joué : venez dire bonjour à un conseiller Clever’hom !'}</span></div>`,
+    suite: () => encoreUnEssai() ? (cles.reussi ? 'Rejouer pour battre mon temps (dernier essai)' : 'Je retente ma chance ! (dernier essai)') : 'Plus d’essai disponible', pret: () => encoreUnEssai(),
   },
   fete: {
     vue: 'coupe', plan: 'fete', etape: '🥂',
