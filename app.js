@@ -773,10 +773,22 @@ let appui = null;
 canvas.addEventListener('pointerdown', (ev) => { appui = [ev.clientX, ev.clientY]; });
 canvas.addEventListener('pointerup', (ev) => {
   if (ecran !== 'cles' || !cles.en_cours || !appui || Math.hypot(ev.clientX - appui[0], ev.clientY - appui[1]) > 10) return; // un glissé fait tourner la vue, ce n'est pas un toucher
-  viserDoigt(ev);
-  const h = rayon.intersectObjects(cles.objets.map((o) => o.o), true)[0]; if (!h) return;
-  const obj = cles.objets.find((x) => { let o = h.object; while (o) { if (o === x.o) return true; o = o.parent; } return false; }); if (obj) fouiller(obj);
+  viserDoigt(ev); const obj = objetVise(); if (obj) fouiller(obj);
 });
+// objet visé par le doigt : on regarde TOUT ce que traverse le rayon (le parasol ou un feuillage ne doivent pas masquer ce qui est dessous).
+// Si l'un des objets traversés cache une clé, c'est lui ; sinon le premier objet réellement touché, sinon la première zone élargie.
+function objetVise() {
+  const hits = rayon.intersectObjects(cles.objets.map((o) => o.o), true); if (!hits.length) return null;
+  const de = (m) => cles.objets.find((x) => { let o = m; while (o) { if (o === x.o) return true; o = o.parent; } return false; });
+  const vus = []; for (const h of hits) { const x = de(h.object); if (x && !vus.some((v) => v.obj === x)) vus.push({ obj: x, zone: h.object.material === ZONE_TOUCHER }); }
+  return (vus.find((v) => cles.avec.has(v.obj.id)) || vus.find((v) => !v.zone) || vus[0])?.obj || null;
+}
+// vérification automatique : chaque cachette, visée en son centre à l'écran, renvoie-t-elle bien vers elle-même quand elle cache une clé ?
+window.__testToucher = () => { window.__image(0); camera.updateMatrixWorld(); const R = []; const r = canvas.getBoundingClientRect(); const avant = cles.avec;
+  for (const o of cles.objets) { const c = new THREE.Box3().setFromObject(o.o).getCenter(new THREE.Vector3()).project(camera);
+    if (Math.abs(c.x) > 1 || Math.abs(c.y) > 1) { R.push(o.id + ':hors-champ'); continue; }
+    cles.avec = new Set([o.id]); souris.set(c.x, c.y); rayon.setFromCamera(souris, camera); const v = objetVise(); if (v !== o) R.push(o.id + '→' + (v ? v.id : 'rien')); }
+  cles.avec = avant; return R; };
 function avancerCles(dt) {
   for (const a of cles.anims) { a.t += dt;
     if (a.type === 'secoue') a.o.rotation.y = a.r0 + Math.sin(a.t * 40) * 0.12 * Math.max(0, 1 - a.t / 0.45);
