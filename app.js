@@ -27,8 +27,19 @@ renderer.localClippingEnabled = true; // les meubles ajoutés au rez-de-chaussé
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#fdece3');
-scene.fog = new THREE.Fog('#fdece3', 34, 70);
+// ciel de fin de journée : bleu profond en haut, dégradé vers l'orangé à l'horizon, halo du côté du soleil couchant
+scene.background = new THREE.Color('#f4c99a');
+scene.fog = new THREE.Fog('#f2c89c', 40, 95);
+const cielDome = new THREE.Mesh(new THREE.SphereGeometry(160, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false,
+  uniforms: { soleilDir: { value: new THREE.Vector3(-10, 8, -15).normalize() } },
+  vertexShader: 'varying vec3 vd; void main() { vd = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform vec3 soleilDir; varying vec3 vd;
+    void main() { float h = clamp(vd.y, -0.1, 1.0);
+      vec3 haut = vec3(0.33, 0.50, 0.78), milieu = vec3(0.80, 0.72, 0.74), bas = vec3(1.0, 0.72, 0.45);
+      vec3 c = h < 0.06 ? mix(bas, milieu, smoothstep(-0.05, 0.06, h)) : mix(milieu, haut, smoothstep(0.06, 0.4, h));
+      float s = max(dot(normalize(vd), soleilDir), 0.0); c += vec3(1.0, 0.55, 0.2) * (pow(s, 6.0) * 0.45 + pow(s, 60.0) * 0.6);
+      gl_FragColor = vec4(c, 1.0); }` }));
+cielDome.renderOrder = -1; cielDome.frustumCulled = false; scene.add(cielDome);
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 // lumière de fin de journée : soleil chaud et rasant, ombres longues, ciel doré
@@ -805,7 +816,7 @@ function faisceaux() {
     const a = Math.min(1, Math.max(0, 1 - u / larg) ** 1.1 * Math.max(0, 1 - v) ** 0.8 * 1.3 + Math.max(0, 1 - Math.hypot(u * 2.2, v * 3.2)) * 0.6) * (v < 0.04 ? 0.3 + v / 0.04 * 0.7 : 1); const k = (y * W + x) * 4;
     img.data[k] = 255; img.data[k + 1] = 186; img.data[k + 2] = 92; img.data[k + 3] = Math.round(255 * a); }
   g.putImageData(img, 0, 0); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.MeshBasicMaterial({ map: t, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 1, toneMapped: false });
+  const mat = new THREE.MeshBasicMaterial({ map: t, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.6, toneMapped: false });
   for (const z of [0.3, 3.95]) { for (let k = 0; k < 2; k++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.7), mat); m.position.set(-0.335 - k * 0.002, 2.05, z); m.rotation.y = -Math.PI / 2; m.renderOrder = 2; scene.add(m); } }
 }
 faisceaux();
@@ -1158,6 +1169,9 @@ async function demarrer() {
   for (const m of etat.membres.concat(VITRINE)) octets[m.avatar] = 0;
   const [ext, jardin] = await Promise.all(['maison-exterieur', 'jardin'].map((n) => charger(n, ATTENDU)));
   herbeDense(ext.scene);
+  // la pelouse se prolonge jusqu'à l'horizon (sinon le ciel apparaît sous le terrain vu d'en haut)
+  { const t = texHerbe().clone(); t.needsUpdate = true; t.repeat.set(120, 120); const sol = new THREE.Mesh(new THREE.CircleGeometry(160, 48), new THREE.MeshStandardMaterial({ map: t, color: '#c9d8b0', roughness: 1 }));
+    sol.rotation.x = -Math.PI / 2; sol.position.set(2, -0.345, 5); sol.receiveShadow = true; scene.add(sol); }
   coques.exterieur = ext.scene; scene.add(ext.scene, jardin.scene); amenagerJardin(jardin.scene); poserJardin(); poserMassif(); poserCachettes();
   vue = 'exterieur'; await synchroniserFamille();
   montrer('exterieur'); viser('accueil', true);
@@ -1186,7 +1200,7 @@ let images = 0, t0 = performance.now(), lent = 0;
 const horloge = new THREE.Clock(); const tmp = new THREE.Vector3();
 function image(dt) {
   for (const mx of mixers) mx.update(dt);
-  avancerTrajet(dt); avancerCroissance(dt); avancerNoel(dt); avancerFete(dt); avancerNaissance(dt); avancerCles(dt); controls.update(); renderer.render(scene, camera);
+  avancerTrajet(dt); avancerCroissance(dt); avancerNoel(dt); avancerFete(dt); avancerNaissance(dt); avancerCles(dt); controls.update(); cielDome.position.copy(camera.position); renderer.render(scene, camera);
   const b = ECRANS[ecran]?.bulle; const bulle = $('bulle');
   if (b && !trajet) { tmp.set(...b.p).project(camera); bulle.hidden = tmp.z > 1; bulle.textContent = b.t; bulle.style.left = ((tmp.x + 1) / 2) * zone3D().w + 'px'; bulle.style.top = ((1 - tmp.y) / 2) * zone3D().h + 'px';
     // pas de bulle par-dessus le bandeau ou le panneau (petits écrans) : elle cacherait les boutons
